@@ -1,0 +1,3025 @@
+﻿/* =========================================================
+ * 浜ゆ槗琛岀郴缁?- 瀹屾暣鏈€缁堢増 app.js
+ *
+ * 杩欑増鍖呭惈锛?
+ * 1. 璐拱椤碉細鎸夐潤鎬佽〃浠锋牸璐拱锛屼拱瀹岃繘浠撳簱
+ * 2. 浠撳簱椤碉細鏌ョ湅搴撳瓨銆佺洿鎺ュ嚭鍞紙绯荤粺鍥炴敹锛夈€佽繘鍏ヤ氦鏄撹涓婃灦
+ * 3. 浜ゆ槗琛屽嚭鍞〉锛?
+ *    - 宸﹁竟锛氫笂鏋舵灦瀛愶紙鏈€澶?10 涓寕鍗曪級
+ *    - 鍙宠竟锛氫粨搴撴墍鏈夊彲涓婃灦鐗╁搧
+ *    - 鐐瑰嚮鐗╁搧鍗＄墖鍙洿鎺ュ脊鍑轰笂鏋剁晫闈?
+ * 4. 涓婃灦缂栬緫鍣細
+ *    - 鏁伴噺 <= 浠撳簱搴撳瓨
+ *    - 浠锋牸鏀寔 + / -
+ *    - 浠锋牸浣庝簬鏈€浣庡敭浠锋椂鑷姩淇涓烘渶浣庡敭浠?
+ *    - 鐐瑰嚮 ? 灞曞紑璇︽儏
+ * 5. 浜ゆ槗璁板綍椤?
+ * 6. 椤堕儴鎵嬪姩鍔犻噾甯?
+ *
+ * ---------------------------------------------------------
+ * 浣犲綋鍓嶇‘璁よ繃鐨勬牳蹇冭绠楄鍒欙細
+ *
+ * 璁撅細
+ *   a = 鐜╁杈撳叆鐨勨€滃崟浠朵笂鏋朵环鈥?
+ *   q = 涓婃灦鏁伴噺
+ *
+ * 娉ㄦ剰锛?
+ * - 澶氫欢涓婃灦鏃讹紝涓嶆槸鎷?(a * q) 閲嶆柊鍒ゅ畾鎵嬬画璐圭巼
+ * - 鑰屾槸鍏堟寜鈥滃崟浠垛€濈畻锛屽啀鎶婄粨鏋滀箻鏁伴噺
+ * - 鍚屼竴绉嶇墿鍝佷竴娆′笂鏋跺浠讹紝鏈川涓婂彧鏄渷鍘讳竴涓釜涓婃灦姝ラ
+ * - 鏈€缁堜粛鐒跺彧鍗犵敤 1 涓灦瀛?
+ *
+ * 鍗曚欢璁＄畻锛?
+ *   鍗曚欢淇濊瘉閲?= max(鏈€浣庝繚璇侀噾, a * 3%)
+ *   鎵嬬画璐瑰簭鍙?= floor(round(a / 鍗曚欢淇濊瘉閲? 0) / 10)
+ *   鍗曚欢鎵嬬画璐圭巼 = 鎵嬬画璐硅〃[鎵嬬画璐瑰簭鍙穄
+ *   鍗曚欢鎵嬬画璐?= a * 鎵嬬画璐圭巼
+ *   鍗曚欢棰勬湡鏀跺叆 = a - 鍗曚欢淇濊瘉閲?- 鍗曚欢鎵嬬画璐?
+ *
+ * 鍚堣灞曠ず锛?
+ *   鍑哄敭鎬讳环 = a * q
+ *   鎬讳繚璇侀噾 = 鍗曚欢淇濊瘉閲?* q
+ *   鎬绘墜缁垂 = 鍗曚欢鎵嬬画璐?* q
+ *   鎬婚鏈熸敹鍏?= 鍗曚欢棰勬湡鏀跺叆 * q
+ * ========================================================= */
+
+
+/* =========================================================
+ * 涓€銆佹湰鍦板瓨鍌?key
+ * 鐢ㄦ潵鎶婇噾甯?/ 浠撳簱搴撳瓨 / 浜ゆ槗璁板綍 / 涓婃灦鍒楄〃淇濆瓨鍦ㄦ祻瑙堝櫒閲?
+ * ========================================================= */
+const STORAGE_KEYS = {
+  gold: "trade_static_gold",
+  inventory: "trade_static_inventory",
+  records: "trade_static_records",
+  listings: "trade_static_listings",
+  listingSlotLimit: "trade_static_listing_slot_limit"
+};
+
+
+/* =========================================================
+ * 浜屻€佸熀纭€甯搁噺
+ * ========================================================= */
+
+// 椤堕儴鈥?閲戝竵鈥濊緭鍏ユ榛樿鍊?
+const DEFAULT_ADD_GOLD = 10000000;
+
+// 鏈€澶у悓鏃朵笂鏋朵綅
+const DEFAULT_LISTING_SLOTS = 10;
+const LISTING_SLOT_PRICE = 10000000;
+const LISTING_DURATION_MS = 24 * 60 * 60 * 1000;
+const LISTING_PRICE_BAR_COUNT = 9;
+const LISTING_PRICE_VISIBLE_BAR_COUNT = 5;
+const LISTING_PRICE_BAR_CENTER_INDEX = 4;
+const LISTING_PRICE_BAR_INTERVAL_RATE = 0.0033554794980203;
+
+// 鍝佽川鎺掑簭锛氱孩 -> 閲?-> 绱?-> 钃?-> 缁?-> 鐧?
+const QUALITY_SORT_ORDER = {
+  "红": 0,
+  "金": 1,
+  "紫": 2,
+  "蓝": 3,
+  "绿": 4,
+  "白": 5
+};
+
+
+/* =========================================================
+ * 涓夈€佸熀纭€宸ュ叿鍑芥暟
+ * ========================================================= */
+
+/**
+ * 绠€鍐?document.getElementById
+ */
+function $(id) {
+  return document.getElementById(id);
+}
+
+/**
+ * 瀹夊叏缁戝畾浜嬩欢
+ * 濡傛灉鍏冪礌涓嶅瓨鍦紝涓嶄細鎶ラ敊
+ */
+function bind(id, eventName, handler) {
+  const el = $(id);
+  if (el) {
+    el.addEventListener(eventName, handler);
+  }
+}
+
+/**
+ * 閲戦鏍煎紡鍖?
+ * 渚嬪锛?000000 -> 1,000,000
+ */
+function formatMoney(num) {
+  return Number(num || 0).toLocaleString("zh-CN");
+}
+
+/**
+ * 杞瓧绗︿覆骞跺幓鎺夊墠鍚庣┖鏍?
+ */
+function toText(value) {
+  return String(value ?? "").trim();
+}
+
+/**
+ * 杞暟瀛?
+ * 浼氳嚜鍔ㄥ幓鎺夐€楀彿 / 绌烘牸锛屽吋瀹?Excel 瀵煎嚭鏍煎紡
+ */
+function toNumber(value) {
+  if (typeof value === "number") return value;
+
+  const cleaned = String(value ?? "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, "")
+    .trim();
+
+  const num = Number(cleaned);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function toMixedValue(value) {
+  if (value === "" || value == null) return "";
+  if (typeof value === "number") return value;
+
+  const text = toText(value);
+  if (!text) return "";
+
+  const normalized = text.replace(/,/g, "");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : text;
+}
+
+/**
+ * 闄愬埗鏁板€煎湪 min ~ max 涔嬮棿
+ */
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => {
+    const map = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    };
+    return map[char] || char;
+  });
+}
+
+function formatMixedValue(value) {
+  if (typeof value === "number") return formatMoney(value);
+  return toText(value) || "-";
+}
+
+function inferRecordSide(type) {
+  if (type === "璐拱") return "buy";
+  if (type === "鍑哄敭") return "sell";
+  return "system";
+}
+
+function parseStoredTimeMs(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (!value) return 0;
+
+  const text = String(value).trim();
+  if (!text) return 0;
+
+  const normalized = text.replace(/[^\d:/.\-\s]/g, " ").replace(/\./g, "-").replace(/\s+/g, " ").trim();
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatDateTime(value) {
+  const timeMs = parseStoredTimeMs(value) || Date.now();
+  const date = new Date(timeMs);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+}
+
+function formatCountdown(ms) {
+  const safeMs = Math.max(0, ms);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+}
+
+function createRecordEntry(type, itemName, price, count, extra = {}) {
+  const timeMs = Number(extra.timeMs) || Date.now();
+
+  return {
+    type,
+    side: extra.side || inferRecordSide(type),
+    itemId: extra.itemId ? String(extra.itemId) : "",
+    itemName,
+    category: extra.category || "",
+    quality: extra.quality || "",
+    price,
+    count,
+    timeMs,
+    time: extra.time || formatDateTime(timeMs)
+  };
+}
+
+function normalizeRecords(records) {
+  return (Array.isArray(records) ? records : []).map(record => {
+    if (!record) return null;
+
+    const timeMs = parseStoredTimeMs(record.timeMs || record.time);
+    return {
+      ...record,
+      side: record.side || inferRecordSide(record.type),
+      itemId: record.itemId ? String(record.itemId) : "",
+      category: record.category || "",
+      quality: record.quality || "",
+      price: toNumber(record.price),
+      count: Math.max(1, toNumber(record.count) || 1),
+      timeMs: timeMs || Date.now(),
+      time: record.time || formatDateTime(timeMs || Date.now())
+    };
+  }).filter(Boolean);
+}
+
+function normalizeListingTimestamps(listing) {
+  const createdAtTs = parseStoredTimeMs(listing.createdAtTs || listing.createdAt) || Date.now();
+  const expireAtTs = parseStoredTimeMs(listing.expireAtTs) || (createdAtTs + LISTING_DURATION_MS);
+
+  return {
+    ...listing,
+    createdAtTs,
+    expireAtTs,
+    createdAt: listing.createdAt || formatDateTime(createdAtTs)
+  };
+}
+
+function getListingRemainingMs(listing, now = Date.now()) {
+  const expireAtTs = parseStoredTimeMs(listing?.expireAtTs);
+  if (!expireAtTs) return 0;
+  return Math.max(0, expireAtTs - now);
+}
+
+/**
+ * 鐢熸垚涓€涓寕鍗?id
+ */
+function makeListingId() {
+  return `listing_${Date.now()}_${Math.floor(Math.random() * 100000)}`;
+}
+
+/**
+ * 鑾峰彇鍝佽川鎺掑簭鍊?
+ * 鏈煡鍝佽川榛樿鎺掑埌鏈€鍚?
+ */
+function getQualitySortValue(quality) {
+  return QUALITY_SORT_ORDER[quality] ?? 999;
+}
+
+// 鍏煎鏃у瓨妗ｏ細鎶婂巻鍙蹭笂鈥渜uantity > 1 鐨勫悎骞舵寕鍗曗€濇媶鎴愬涓崟浠舵寕鍗曘€?// 杩欐牱宸︿晶鏋跺瓙濮嬬粓鎸?1 浠?1 鍗″睍绀猴紝鍚庨潰鐨勪笂鏋?涓嬫灦閫昏緫涔熸洿缁熶竴銆?
+function normalizeListings(listings) {
+  if (!Array.isArray(listings)) return [];
+
+  const normalized = [];
+
+  listings.forEach((listing, index) => {
+    if (!listing) return;
+
+    const normalizedListing = normalizeListingTimestamps(listing);
+
+    const quantity = Math.max(1, Math.floor(toNumber(normalizedListing.quantity) || 1));
+    const listingIdBase = String(normalizedListing.listingId || `legacy_listing_${index + 1}`);
+    const perItemPrice = toNumber(normalizedListing.perItemPrice) || Math.round(toNumber(normalizedListing.totalPrice) / quantity);
+    const perItemDeposit = toNumber(normalizedListing.perItemDeposit) || Math.round(toNumber(normalizedListing.deposit) / quantity);
+    const perItemFee = toNumber(normalizedListing.perItemFee) || Math.round(toNumber(normalizedListing.fee) / quantity);
+    const perItemExpectedReceive =
+      toNumber(normalizedListing.perItemExpectedReceive) || Math.round(toNumber(normalizedListing.expectedReceive) / quantity);
+
+    for (let i = 0; i < quantity; i += 1) {
+      normalized.push({
+        ...normalizedListing,
+        listingId: quantity === 1 ? listingIdBase : `${listingIdBase}_${i + 1}`,
+        quantity: 1,
+        perItemPrice,
+        perItemDeposit,
+        perItemFee,
+        perItemExpectedReceive,
+        totalPrice: perItemPrice,
+        deposit: perItemDeposit,
+        fee: perItemFee,
+        expectedReceive: perItemExpectedReceive
+      });
+    }
+  });
+
+  return normalized.map(normalizeListingTimestamps);
+}
+
+function getListingSlotLimit() {
+  return Math.max(DEFAULT_LISTING_SLOTS, toNumber(state.listingSlotLimit) || DEFAULT_LISTING_SLOTS);
+}
+
+function renderListingSlotLimitTip() {
+  const tipEl = $("listingSlotLimitTip");
+  if (!tipEl) return;
+
+  tipEl.textContent = `最多同时上架 ${getListingSlotLimit()} 个商品`;
+}
+
+function confirmListing() {}
+
+function renderListingShelf() {}
+
+/* =========================================================
+ * 鍥涖€佸叏灞€鐘舵€?state
+ * ========================================================= */
+
+const state = {
+  // 浠?items-data.js 璇诲嚭鏉ョ殑鐗╁搧琛?
+  items: [],
+
+  // 浠?items-data.js 璇诲嚭鏉ョ殑鎵嬬画璐硅鍒欒〃
+  serviceChargeRules: [],
+
+  // 褰撳墠閲戝竵
+  gold: Number(localStorage.getItem(STORAGE_KEYS.gold)) || 314381,
+
+  // 浠撳簱搴撳瓨
+  // 缁撴瀯锛歿 itemId: count, ... }
+  inventory: JSON.parse(localStorage.getItem(STORAGE_KEYS.inventory) || "{}"),
+
+  // 浜ゆ槗璁板綍
+  records: normalizeRecords(JSON.parse(localStorage.getItem(STORAGE_KEYS.records) || "[]")),
+
+  // 褰撳墠鎸傚崟鍒楄〃
+  // 涓€涓寕鍗曞崰涓€涓灦瀛?
+  listings: normalizeListings(JSON.parse(localStorage.getItem(STORAGE_KEYS.listings) || "[]")),
+
+  listingSlotLimit: Math.max(
+    DEFAULT_LISTING_SLOTS,
+    Number(localStorage.getItem(STORAGE_KEYS.listingSlotLimit)) || DEFAULT_LISTING_SLOTS
+  ),
+
+  departmentTasks: [],
+
+  // 褰撳墠涓昏鍥撅細trade / warehouse / department
+  currentView: "trade",
+
+  currentDepartment: "",
+  selectedDepartmentTaskId: "",
+
+  // 褰撳墠浜ゆ槗琛岄〉绛撅細buy / sell / record
+  currentTab: "buy",
+
+  // 宸︿晶绛涢€?
+  currentCategory: "",
+  currentQuality: "",
+  keyword: "",
+
+  // 閫氱敤寮圭獥鈥滅‘璁も€濇寜閽殑鍥炶皟
+  modalConfirmHandler: null,
+
+  // 褰撳墠涓婃灦缂栬緫鍣ㄨ崏绋?
+  // 缁撴瀯绀轰緥锛?
+  // {
+  //   itemId: "1001",
+  //   quantity: 1,
+  //   currentPrice: 326505,
+  //   showDetail: false
+  // }
+  listingDraft: null,
+  activeListingDetailId: "",
+  listingTicker: null
+};
+
+
+/* =========================================================
+ * 浜斻€佹湰鍦版寔涔呭寲
+ * ========================================================= */
+
+/**
+ * 鎶婂綋鍓嶉噾甯?/ 浠撳簱 / 璁板綍 / 鎸傚崟淇濆瓨鍒版祻瑙堝櫒鏈湴
+ */
+function saveState() {
+  localStorage.setItem(STORAGE_KEYS.gold, state.gold);
+  localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(state.inventory));
+  localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(state.records));
+  localStorage.setItem(STORAGE_KEYS.listings, JSON.stringify(state.listings));
+  localStorage.setItem(STORAGE_KEYS.listingSlotLimit, String(getListingSlotLimit()));
+}
+
+
+/* =========================================================
+ * 鍏€佹暟鎹鑼冨寲
+ * 浠?items-data.js 璇诲埌鐨勫叏灞€鍙橀噺閲屾暣鐞嗘垚鍓嶇缁熶竴缁撴瀯
+ * ========================================================= */
+
+/**
+ * 瑙勮寖鍖栫墿鍝佽〃
+ * 璁╂瘡涓墿鍝佽嚦灏戞湁杩欎簺瀛楁锛?
+ * id / seq / name / category / quality / buyPrice / initialPrice / sellPrice / minDeposit
+ */
+function normalizeItems(items) {
+  return (Array.isArray(items) ? items : [])
+    .filter(item => item && item.name)
+    .map((item, index) => ({
+      id: String(item.id || item.seq || index + 1),
+      seq: toNumber(item.seq) || index + 1,
+      name: toText(item.name),
+      category: toText(item.category),
+      quality: toText(item.quality),
+
+      // 鏂板瀛楁
+      length: toNumber(item.length),
+      width: toNumber(item.width),
+      priceLower: toNumber(item.priceLower),
+      priceUpper: toNumber(item.priceUpper),
+      description: toText(item.description),
+
+      buyPrice: toNumber(item.buyPrice),
+      initialPrice: toNumber(item.initialPrice || item.buyPrice),
+      sellPrice: toNumber(item.sellPrice),
+      minDeposit: toNumber(item.minDeposit)
+    }));
+}
+
+/**
+ * 瑙勮寖鍖栨墜缁垂瑙勫垯琛?
+ * feeRate 濡傛灉鏄?15.58 杩欑锛岃浆鎴?0.1558
+ */
+function normalizeServiceChargeRules(rules) {
+  return (Array.isArray(rules) ? rules : [])
+    .map(rule => {
+      const rawRate = toNumber(rule.feeRate);
+
+      return {
+        feeIndex: toNumber(rule.feeIndex),
+        feeRate: rawRate > 1 ? rawRate / 100 : rawRate
+      };
+    })
+    .filter(rule => rule.feeIndex > 0)
+    .sort((a, b) => a.feeIndex - b.feeIndex);
+}
+
+function normalizeDepartmentTasks(tasks) {
+  let lastDepartment = "";
+
+  return (Array.isArray(tasks) ? tasks : [])
+    .filter(task => task && (task.taskId || task.id))
+    .map((task, index) => {
+      const department = toText(task.department) || lastDepartment || "未命名部门";
+      lastDepartment = department;
+
+      const rewards = (Array.isArray(task.rewards) ? task.rewards : [])
+        .map((reward, rewardIndex) => ({
+          id: `${task.taskId || task.id || index + 1}_reward_${rewardIndex + 1}`,
+          name: toText(reward?.name),
+          amount: toMixedValue(reward?.amount)
+        }))
+        .filter(reward => reward.name);
+
+      return {
+        id: String(task.id || task.taskId || index + 1),
+        seq: toNumber(task.seq) || index + 1,
+        department,
+        taskId: String(task.taskId || task.id || index + 1),
+        name: toText(task.name) || `任务 ${index + 1}`,
+        type: toText(task.type) || "普通任务",
+        preTaskId: toText(task.preTaskId),
+        map: toText(task.map) || "未知地图",
+        description: toText(task.description) || "暂无任务描述",
+        target: toText(task.target) || "暂无任务目标",
+        targetCount: toMixedValue(task.targetCount),
+        rewards
+      };
+    });
+}
+
+/**
+ * 鏍规嵁鎵嬬画璐瑰簭鍙锋嬁鎵嬬画璐圭巼
+ * 濡傛灉鍒氬ソ鏈夊搴斿簭鍙凤紝鐩存帴杩斿洖
+ * 濡傛灉娌℃湁锛?
+ * - 灏忎簬鏈€灏忓簭鍙凤細杩斿洖绗竴鏉?
+ * - 澶т簬鏈€澶у簭鍙凤細杩斿洖鏈€鍚庝竴鏉?
+ */
+function getFeeRateByIndex(feeIndex) {
+  const rules = state.serviceChargeRules;
+
+  // 濡傛灉鎵嬬画璐硅〃娌¤鍒帮紝鐩存帴鎶ラ敊鎻愮ず
+  if (!rules.length) {
+    console.warn("[鎵嬬画璐硅鍒欎负绌篯 state.serviceChargeRules 娌℃湁璇诲埌鏁版嵁");
+    return 0;
+  }
+
+  const exact = rules.find(rule => rule.feeIndex === feeIndex);
+  if (exact) return exact.feeRate;
+
+  if (feeIndex <= rules[0].feeIndex) {
+    return rules[0].feeRate;
+  }
+
+  return rules[rules.length - 1].feeRate;
+}
+
+
+/* =========================================================
+ * 涓冦€佷环鏍肩浉鍏宠鍒?
+ * ========================================================= */
+
+/**
+ * 鍙傝€冧环鏍?
+ * 浼樺厛浣跨敤鍒濆瀹氫环 initialPrice
+ */
+function getReferencePrice(item) {
+  return item.initialPrice || item.buyPrice || 0;
+}
+
+/**
+ * 鏈€浣庡彲涓婃灦浠锋牸 = 鍒濆瀹氫环 * 15%
+ */
+function getMinListPrice(item) {
+  return Math.max(1, Math.round(getReferencePrice(item) * 0.15));
+}
+
+/**
+ * 鏈€楂樺彲涓婃灦浠锋牸 = 鍒濆瀹氫环 * 1500%
+ * 鍗?* 15
+ */
+function getMaxListPrice(item) {
+  return Math.max(getMinListPrice(item), Math.round(getReferencePrice(item) * 15));
+}
+
+/**
+ * 褰撳墠宸蹭娇鐢ㄥ敭浣?
+ * 鐜板湪鐩存帴绛変簬鎸傚崟鏁伴噺
+ */
+function getUsedListingSlots() {
+  return state.listings.reduce((sum, listing) => sum + Math.max(0, toNumber(listing.quantity)), 0);
+}
+
+function getAvailableListingSlots() {
+  return Math.max(0, getListingSlotLimit() - getUsedListingSlots());
+}
+
+function getItemById(itemId) {
+  return state.items.find(item => item.id === String(itemId)) || null;
+}
+
+function getListingItem(listing) {
+  return getItemById(listing?.itemId) || {
+    id: listing?.itemId || "",
+    name: listing?.name || "鏈煡鐗╁搧",
+    category: listing?.category || "",
+    quality: listing?.quality || "",
+    buyPrice: toNumber(listing?.perItemPrice),
+    initialPrice: toNumber(listing?.perItemPrice),
+    priceLower: 0,
+    priceUpper: 0,
+    minDeposit: toNumber(listing?.perItemDeposit)
+  };
+}
+
+function getRecordItem(record) {
+  if (record?.itemId) {
+    const item = getItemById(record.itemId);
+    if (item) return item;
+  }
+
+  return state.items.find(item => item.name === record?.itemName) || null;
+}
+
+function removeExpiredListings(now = Date.now()) {
+  const expiredListings = state.listings.filter(listing => getListingRemainingMs(listing, now) <= 0);
+  if (!expiredListings.length) return false;
+
+  const expiredIds = new Set(expiredListings.map(listing => listing.listingId));
+
+  expiredListings.forEach(listing => {
+    state.inventory[listing.itemId] = (state.inventory[listing.itemId] || 0) + Math.max(1, toNumber(listing.quantity) || 1);
+    state.records.unshift(createRecordEntry("杩囨湡涓嬫灦", listing.name, listing.perItemPrice, listing.quantity, {
+      itemId: listing.itemId,
+      category: listing.category,
+      quality: listing.quality,
+      side: "system"
+    }));
+  });
+
+  state.listings = state.listings.filter(listing => !expiredIds.has(listing.listingId));
+
+  if (state.activeListingDetailId && expiredIds.has(state.activeListingDetailId)) {
+    closeListingView();
+  }
+
+  saveState();
+  return true;
+}
+
+function tickListingLifecycle() {
+  const changed = removeExpiredListings();
+  if (changed) {
+    renderAll();
+    return;
+  }
+
+  renderListingShelf();
+  renderListingDetailView();
+}
+
+function startListingTicker() {
+  if (state.listingTicker) {
+    clearInterval(state.listingTicker);
+  }
+
+  state.listingTicker = setInterval(() => {
+    tickListingLifecycle();
+  }, 1000);
+}
+
+function buyListingSlot() {
+  if (state.gold < LISTING_SLOT_PRICE) {
+    showMessageModal("金币不足", `购买 1 个槽位需要 ${formatMoney(LISTING_SLOT_PRICE)} 金币。`);
+    return;
+  }
+
+  state.gold -= LISTING_SLOT_PRICE;
+  state.listingSlotLimit = getListingSlotLimit() + 1;
+  saveState();
+  renderAll();
+
+  showMessageModal("购买成功", `已增加 1 个槽位。\n当前槽位：${getUsedListingSlots()}/${getListingSlotLimit()}`);
+}
+
+/* =========================================================
+ * 鍏€佹牳蹇冭绠楋細涓婃灦淇℃伅
+ *
+ * 鎸変綘鏈€鏂扮‘璁ょ殑瑙勫垯锛?
+ * - a = 鐜╁杈撳叆鐨勨€滃崟浠朵笂鏋朵环鈥?
+ * - q = 涓婃灦鏁伴噺
+ * - 澶氫欢涓婃灦鏃讹紝鍏堟寜鍗曚欢绠楋紝鍐嶄箻鏁伴噺
+ * ========================================================= */
+function calculateListingInfo(item, currentPrice, quantity = 1) {
+  const referencePrice = getReferencePrice(item);
+  const minPrice = getMinListPrice(item);
+  const maxPrice = getMaxListPrice(item);
+
+  const fixedPrice = clamp(Math.round(currentPrice), minPrice, maxPrice);
+  const isPriceValid = fixedPrice >= minPrice && fixedPrice <= maxPrice;
+
+  /* -------------------------
+  * 鍗曚欢璁＄畻
+  * ------------------------- */
+  const perItemPrice = fixedPrice;
+
+  // 瀹為檯淇濊瘉閲戯紙涓婃灦鏃舵敹鍙栵級
+  // 瑙勫垯涓嶅彉锛歮ax(鏈€浣庝繚璇侀噾, 褰撳墠鍑哄敭浠锋牸 * 3%)
+  const perItemDeposit = Math.max(
+    toNumber(item.minDeposit),
+    Math.round(perItemPrice * 0.03)
+  );
+
+  // 鎵嬬画璐规í杞翠笓鐢ㄥ熀鏁?
+  // 鏂拌鍒欙細max(鏈€浣庡嚭鍞环鏍?* 3%, 鏈€浣庝繚璇侀噾)
+  const feeAxisDepositBase = Math.max(
+    Math.round(minPrice * 0.03),
+    toNumber(item.minDeposit)
+  );
+
+  // 鎵嬬画璐规í杞?= round(鍑哄敭浠锋牸 / max(鏈€浣庡嚭鍞环鏍?3%锛屾渶浣庝繚璇侀噾), 1)
+  const feeAxis = Number((perItemPrice / feeAxisDepositBase).toFixed(1));
+
+  // 鎵嬬画璐瑰簭鍙?
+  const feeIndex = Math.max(1, Math.floor(feeAxis / 10));
+
+  // 鍗曚欢鎵嬬画璐圭巼
+  const feeRate = getFeeRateByIndex(feeIndex);
+
+  // 鍗曚欢鎵嬬画璐?
+  const perItemFee = Math.round(perItemPrice * feeRate);
+
+  // 鍗曚欢棰勬湡鏀跺叆
+  const perItemExpectedReceive = perItemPrice - perItemDeposit - perItemFee;
+
+  /* -------------------------
+   * 鍚堣灞曠ず
+   * ------------------------- */
+  const totalPrice = perItemPrice * quantity;
+  const totalDeposit = perItemDeposit * quantity;
+  const totalFee = perItemFee * quantity;
+  const expectedReceive = perItemExpectedReceive * quantity;
+  const usedSlots = getUsedListingSlots();
+  const availableSlots = Math.max(0, getListingSlotLimit() - usedSlots);
+
+  return {
+    item,
+    quantity,
+    stockCount: state.inventory[item.id] || 0,
+    usedSlots,
+    slotsToUse: quantity,
+    availableSlots,
+    maxSlots: getListingSlotLimit(),
+
+    referencePrice,
+    currentPrice: fixedPrice,
+    minPrice,
+    maxPrice,
+    isPriceValid,
+
+    // 鍗曚欢鏁版嵁
+    perItemPrice,
+    perItemDeposit,
+    perItemFee,
+    perItemExpectedReceive,
+
+    // 鎵嬬画璐瑰垽瀹氳繃绋?
+    feeAxis,
+    feeIndex,
+    feeRate,
+
+    // 鍚堣鏁版嵁锛堢晫闈㈢敤锛?
+    totalPrice,
+    deposit: totalDeposit,
+    fee: totalFee,
+    expectedReceive
+  };
+}
+/**
+ * 鐢熸垚鍙樺寲鏇茬嚎鏁版嵁
+ * 妯酱锛氫环鏍煎尯闂达紙鏈€浣庝环 -> 鏈€楂樹环锛?
+ * 绾佃酱锛氬湪褰撳墠鏁伴噺涓嬬殑
+ * - 棰勬湡鏀跺叆
+ * - 淇濊瘉閲?
+ * - 鎵嬬画璐?
+ */
+function buildTrendData(item, quantity = 1) {
+  const minPrice = getMinListPrice(item);
+  const maxPrice = getMaxListPrice(item);
+
+  const points = [];
+
+  // 浠庢渶浣庝环寮€濮?
+  let currentPrice = minPrice;
+
+  // 闃叉寮傚父姝诲惊鐜?
+  let guard = 0;
+  const maxGuard = 10000;
+
+  while (currentPrice <= maxPrice && guard < maxGuard) {
+    const info = calculateListingInfo(item, currentPrice, quantity);
+    const totalPrice = info.totalPrice || 1;
+
+    points.push({
+      price: info.currentPrice,
+      feeAxis: Number(info.feeAxis.toFixed(1)),
+
+      // 绾佃酱鐢ㄦ瘮渚嬶紙0~1锛?
+      incomeRate: info.expectedReceive / totalPrice,
+      feeRateLine: info.fee / totalPrice,
+      depositRate: info.deposit / totalPrice
+    });
+
+    // 涓嬩竴涓环鏍?= 涓婁竴涓环鏍?* 1.01
+    let nextPrice = Math.round(currentPrice * 1.01);
+
+    // 闃叉鍥涜垗浜斿叆鍚庝环鏍间笉鍙橈紝瀵艰嚧姝诲惊鐜?
+    if (nextPrice <= currentPrice) {
+      nextPrice = currentPrice + 1;
+    }
+
+    // 濡傛灉宸茬粡蹇秴杩囨渶澶т环锛屽氨鏈€鍚庤ˉ涓€涓渶澶т环鐐?
+    if (nextPrice > maxPrice) {
+      if (currentPrice !== maxPrice) {
+        currentPrice = maxPrice;
+      } else {
+        break;
+      }
+    } else {
+      currentPrice = nextPrice;
+    }
+
+    guard += 1;
+  }
+
+  // 濡傛灉鏈€鍚庝竴涓偣涓嶆槸鏈€楂樹环锛岃ˉ涓€涓渶楂樹环鐐?
+  if (!points.length || points[points.length - 1].price !== maxPrice) {
+    const lastInfo = calculateListingInfo(item, maxPrice, quantity);
+    const totalPrice = lastInfo.totalPrice || 1;
+
+    points.push({
+      price: lastInfo.currentPrice,
+      feeAxis: Number(lastInfo.feeAxis.toFixed(1)),
+      incomeRate: lastInfo.expectedReceive / totalPrice,
+      feeRateLine: lastInfo.fee / totalPrice,
+      depositRate: lastInfo.deposit / totalPrice
+    });
+  }
+
+  return points;
+}
+/**
+ * 缁樺埗鍙樺寲鏇茬嚎寮圭獥閲岀殑 canvas
+ * 涓夋潯绾匡細
+ * - 棰勬湡鏀跺叆
+ * - 鎵嬬画璐?
+ * - 淇濊瘉閲?
+ */
+function renderTrendModalChart(info) {
+  const canvas = $("trendChartCanvas");
+  if (!canvas) return;
+
+  const wrap = canvas.parentElement;
+  const ctx = canvas.getContext("2d");
+  if (!ctx || !wrap) return;
+
+  // 杩欓噷涓嶅啀鎶芥牱锛岀洿鎺ユ嬁鍏ㄩ儴鐪熷疄鐐?
+  const points = buildTrendData(info.item, info.quantity);
+  if (!points.length) return;
+
+  // 姣忎釜鐐瑰崰鐨勬í鍚戝搴?
+  // 鎯崇湅寰楁洿寮€鍙互璋冨ぇ锛屾瘮濡?24 / 26
+  const pointSpacing = 20;
+
+  const dpr = window.devicePixelRatio || 1;
+  const baseHeight = wrap.clientHeight || 560;
+
+  const padding = {
+    top: 24,
+    right: 30,
+    bottom: 90,
+    left: 80
+  };
+
+  // 鍏抽敭锛氱敾甯冨搴﹁窡鐐规暟璧帮紝纭繚 464 涓偣閮借兘灞曞紑
+  const chartWidth = Math.max(
+    wrap.clientWidth,
+    padding.left + padding.right + (points.length - 1) * pointSpacing + 40
+  );
+
+  const chartHeight = baseHeight;
+
+  canvas.width = Math.floor(chartWidth * dpr);
+  canvas.height = Math.floor(chartHeight * dpr);
+
+  // 璁?CSS 瑙嗚灏哄鍜屽疄闄呭楂樹竴鑷?
+  canvas.style.width = `${chartWidth}px`;
+  canvas.style.height = `${chartHeight}px`;
+
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, chartWidth, chartHeight);
+
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+
+  // 妯潗鏍囨寜鈥滅偣搴忓垪鈥濇帓锛屾瘡涓偣閮藉崰涓€涓綅缃?
+  function getX(index) {
+    return padding.left + index * pointSpacing;
+  }
+
+  // 绾靛潗鏍囧浐瀹?0~100%
+  function getY(value) {
+    const ratio = value / 1;
+    return padding.top + plotHeight - ratio * plotHeight;
+  }
+
+  // =========================
+  // 鑳屾櫙妯嚎锛?~100%锛?
+  // =========================
+  ctx.strokeStyle = "rgba(255,255,255,0.08)";
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i <= 5; i += 1) {
+    const y = padding.top + (plotHeight / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(chartWidth - padding.right, y);
+    ctx.stroke();
+  }
+
+  // Y杞寸櫨鍒嗘瘮鏂囧瓧
+  ctx.fillStyle = "rgba(220,235,245,0.65)";
+  ctx.font = "12px Microsoft YaHei";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+
+  for (let i = 0; i <= 5; i += 1) {
+    const value = 100 - i * 20;
+    const y = padding.top + (plotHeight / 5) * i;
+    ctx.fillText(`${value}%`, padding.left - 10, y);
+  }
+
+  // =========================
+  // 姣忎釜鐐归兘鐢荤珫鍚戝埢搴︾嚎
+  // =========================
+  ctx.strokeStyle = "rgba(255,255,255,0.05)";
+  ctx.lineWidth = 1;
+
+  points.forEach((point, index) => {
+    const x = getX(index);
+    ctx.beginPath();
+    ctx.moveTo(x, padding.top);
+    ctx.lineTo(x, chartHeight - padding.bottom);
+    ctx.stroke();
+  });
+
+  // =========================
+  // 妯酱鏍囩锛氭瘡涓偣閮芥樉绀烘墜缁垂妯酱
+  // 涓轰簡閬垮厤閲嶅彔锛屾枃瀛楁棆杞樉绀?
+  // =========================
+  ctx.fillStyle = "rgba(220,235,245,0.65)";
+  ctx.font = "11px Microsoft YaHei";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+
+  points.forEach((point, index) => {
+    const x = getX(index);
+    const y = chartHeight - padding.bottom + 16;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 3); // 鏃嬭浆 60 搴?
+    ctx.fillText(point.feeAxis.toFixed(1), 0, 0);
+    ctx.restore();
+  });
+
+  // X杞存爣棰?
+  ctx.save();
+  ctx.fillStyle = "rgba(220,235,245,0.55)";
+  ctx.font = "13px Microsoft YaHei";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("手续费横轴", padding.left + plotWidth / 2, chartHeight - 20);
+  ctx.restore();
+
+  // =========================
+  // 鐢讳笁鏉℃洸绾?
+  // =========================
+  function drawLine(key, color) {
+    ctx.beginPath();
+
+    points.forEach((point, index) => {
+      const x = getX(index);
+      const y = getY(point[key]);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  drawLine("incomeRate", "#d8c36a");   // 棰勬湡鏀跺叆
+  drawLine("feeRateLine", "#59b7ff");  // 鎵嬬画璐?
+  drawLine("depositRate", "#8f9aa6");  // 淇濊瘉閲?
+
+  // =========================
+  // 楂樹寒褰撳墠浠锋牸瀵瑰簲鐐?
+  // =========================
+  let activeIndex = 0;
+  let minDiff = Infinity;
+
+  points.forEach((point, index) => {
+    const diff = Math.abs(point.price - info.currentPrice);
+    if (diff < minDiff) {
+      minDiff = diff;
+      activeIndex = index;
+    }
+  });
+
+  const activeX = getX(activeIndex);
+
+  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(activeX, padding.top);
+  ctx.lineTo(activeX, chartHeight - padding.bottom);
+  ctx.stroke();
+}
+/**
+ * 鎵撳紑鍙樺寲鏇茬嚎寮圭獥
+ */
+function openTrendModal() {
+  const info = getDraftInfo();
+  if (!info) return;
+
+  const mask = $("trendModalMask");
+  const title = $("trendModalItemTitle");
+
+  if (title) {
+    title.textContent = `${info.item.name} / 鏁伴噺 ${info.quantity} / 褰撳墠鎵嬬画璐规í杞?${info.feeAxis.toFixed(1)}`;
+  }
+
+  if (mask) {
+    mask.classList.add("show");
+  }
+
+  renderTrendModalChart(info);
+}
+
+/**
+ * 鍏抽棴鍙樺寲鏇茬嚎寮圭獥
+ */
+function closeTrendModal() {
+  const mask = $("trendModalMask");
+  if (mask) {
+    mask.classList.remove("show");
+  }
+}
+/* =========================================================
+ * 涔濄€侀《閮ㄩ噾甯佹樉绀?/ 鏁版嵁鐘舵€佹樉绀?
+ * ========================================================= */
+
+function updateGoldText() {
+  const topGoldText = $("topGoldText");
+  if (topGoldText) {
+    topGoldText.textContent = formatMoney(state.gold);
+  }
+}
+
+function updateDataStatus(text) {
+  const el = $("dataStatusText");
+  if (el) {
+    el.textContent = text;
+  }
+}
+
+
+/* =========================================================
+ * 鍗併€佷氦鏄撹褰?
+ * ========================================================= */
+
+function addRecord(type, itemName, price, count, extra = {}) {
+  state.records.unshift(createRecordEntry(type, itemName, price, count, extra));
+  saveState();
+}
+
+/* =========================================================
+ * 鍗佷竴銆佽鍙栭潤鎬佹暟鎹?
+ * 浠?items-data.js 閲岃锛?
+ * - window.ITEMS_DATA
+ * - window.SERVICE_CHARGE_DATA
+ * ========================================================= */
+
+function loadStaticData() {
+  state.items = normalizeItems(window.ITEMS_DATA);
+  state.serviceChargeRules = normalizeServiceChargeRules(window.SERVICE_CHARGE_DATA);
+  state.departmentTasks = normalizeDepartmentTasks(window.DEPARTMENT_TASK_DATA);
+
+  const departmentNames = [...new Set(state.departmentTasks.map(task => task.department).filter(Boolean))];
+  if (!departmentNames.includes(state.currentDepartment)) {
+    state.currentDepartment = departmentNames[0] || "";
+  }
+
+  const currentDepartmentTasks = state.departmentTasks.filter(task => task.department === state.currentDepartment);
+  if (!currentDepartmentTasks.some(task => task.taskId === state.selectedDepartmentTaskId)) {
+    state.selectedDepartmentTaskId = currentDepartmentTasks[0]?.taskId || "";
+  }
+
+
+  if (state.items.length > 0) {
+    updateDataStatus(
+      `已读取静态数据：物品 ${state.items.length} 条，手续费规则 ${state.serviceChargeRules.length} 条`
+    );
+  } else {
+    updateDataStatus("未读取到静态数据，请先执行 build-static-data.js");
+  }
+
+  renderFilters();
+  renderAll();
+}
+
+
+/* =========================================================
+ * 鍗佷簩銆侀€氱敤寮圭獥
+ * ========================================================= */
+
+function openModal({
+  title = "鎻愮ず",
+  content = "",
+  confirmText = "纭畾",
+  cancelText = "鍙栨秷",
+  showCancel = true,
+  onConfirm = null
+}) {
+  const mask = $("modalMask");
+  const titleEl = $("modalTitle");
+  const contentEl = $("modalContent");
+  const cancelBtn = $("modalCancelBtn");
+  const confirmBtn = $("modalConfirmBtn");
+
+  if (!mask || !titleEl || !contentEl || !cancelBtn || !confirmBtn) return;
+
+  titleEl.textContent = title;
+  contentEl.textContent = content;
+  cancelBtn.textContent = cancelText;
+  confirmBtn.textContent = confirmText;
+  cancelBtn.style.display = showCancel ? "inline-block" : "none";
+
+  state.modalConfirmHandler = onConfirm;
+  mask.classList.add("show");
+}
+
+function closeModal() {
+  const mask = $("modalMask");
+  if (mask) {
+    mask.classList.remove("show");
+  }
+  state.modalConfirmHandler = null;
+}
+
+function showMessageModal(title, content) {
+  openModal({
+    title,
+    content,
+    confirmText: "纭畾",
+    showCancel: false,
+    onConfirm: () => {
+      closeModal();
+    }
+  });
+}
+
+function showConfirmModal(title, content, onConfirm) {
+  openModal({
+    title,
+    content,
+    confirmText: "纭",
+    cancelText: "鍙栨秷",
+    showCancel: true,
+    onConfirm: () => {
+      if (typeof onConfirm === "function") {
+        onConfirm();
+      }
+    }
+  });
+}
+function openItemDetail(itemId) {
+  const item = state.items.find(entry => entry.id === itemId);
+  if (!item) return;
+
+  const mask = $("itemDetailMask");
+  if (!mask) return;
+
+  $("itemDetailName").textContent = item.name || "-";
+  $("itemDetailCategory").textContent = item.category || "-";
+  $("itemDetailQuality").textContent = item.quality || "-";
+  $("itemDetailLength").textContent = item.length || "-";
+  $("itemDetailWidth").textContent = item.width || "-";
+  $("itemDetailPrice").textContent = formatMoney(item.initialPrice || item.buyPrice || 0);
+  $("itemDetailPriceUpper").textContent = formatMoney(item.priceUpper || getMaxListPrice(item));
+  $("itemDetailPriceLower").textContent = formatMoney(item.priceLower || getMinListPrice(item));
+  $("itemDetailMinDeposit").textContent = formatMoney(item.minDeposit || 0);
+  $("itemDetailDescription").textContent = item.description || "鏆傛棤鎻忚堪";
+
+  mask.classList.add("show");
+}
+
+function closeItemDetail() {
+  const mask = $("itemDetailMask");
+  if (mask) {
+    mask.classList.remove("show");
+  }
+}
+
+function handleItemDetailCardClick(event, itemId) {
+  if (event?.target && typeof event.target.closest === "function" && event.target.closest(".card-btn")) {
+    return;
+  }
+
+  openItemDetail(itemId);
+}
+
+function handleListingEditorCardClick(event, itemId) {
+  if (event?.target && typeof event.target.closest === "function" && event.target.closest(".card-btn")) {
+    return;
+  }
+
+  openListingEditor(itemId);
+}
+/* =========================================================
+ * 鍗佷笁銆佸熀纭€鍒楄〃鑾峰彇
+ * ========================================================= */
+
+/**
+ * 鎸夊搧璐ㄦ帓搴忥紝鍐嶆寜 seq锛屽啀鎸夊悕绉?
+ */
+function getSortedItems(items) {
+  return items.slice().sort((a, b) => {
+    const qualityDiff = getQualitySortValue(a.quality) - getQualitySortValue(b.quality);
+    if (qualityDiff !== 0) return qualityDiff;
+
+    const seqDiff = (a.seq || 999999) - (b.seq || 999999);
+    if (seqDiff !== 0) return seqDiff;
+
+    return String(a.name).localeCompare(String(b.name), "zh-CN");
+  });
+}
+
+/**
+ * 浠撳簱鎵€鏈夌墿鍝侊紙涓嶈繃婊わ級
+ */
+function getInventoryItemsRaw() {
+  return getSortedItems(
+    state.items
+      .filter(item => (state.inventory[item.id] || 0) > 0)
+      .map(item => ({
+        ...item,
+        count: state.inventory[item.id]
+      }))
+  );
+}
+
+/**
+ * 璐拱椤佃繃婊ゅ悗鐨勭墿鍝?
+ */
+function getFilteredItems() {
+  return getSortedItems(
+    state.items.filter(item => {
+      const matchKeyword = !state.keyword || item.name.includes(state.keyword);
+      const matchCategory = !state.currentCategory || item.category === state.currentCategory;
+      const matchQuality = !state.currentQuality || item.quality === state.currentQuality;
+      return matchKeyword && matchCategory && matchQuality;
+    })
+  );
+}
+
+/**
+ * 浜ゆ槗琛屽嚭鍞〉鍙充晶锛氫粨搴撲腑鍙笂鏋剁殑鐗╁搧
+ */
+function getFilteredInventoryItems() {
+  return getSortedItems(
+    state.items
+      .filter(item => (state.inventory[item.id] || 0) > 0)
+      .filter(item => {
+        const matchKeyword = !state.keyword || item.name.includes(state.keyword);
+        const matchCategory = !state.currentCategory || item.category === state.currentCategory;
+        const matchQuality = !state.currentQuality || item.quality === state.currentQuality;
+        return matchKeyword && matchCategory && matchQuality;
+      })
+      .map(item => ({
+        ...item,
+        count: state.inventory[item.id]
+      }))
+  );
+}
+
+
+/* =========================================================
+ * 鍗佸洓銆佸乏渚х瓫閫夋覆鏌?
+ * ========================================================= */
+
+function renderFilters() {
+  const categoryList = $("categoryList");
+  const qualityList = $("qualityList");
+  if (!categoryList || !qualityList) return;
+
+  const categories = [...new Set(state.items.map(item => item.category).filter(Boolean))];
+  const qualities = [...new Set(state.items.map(item => item.quality).filter(Boolean))];
+
+  // 褰撳墠绛涢€夊鏋滃凡缁忎笉瀛樺湪浜嗭紝灏遍噸缃?
+  if (state.currentCategory && !categories.includes(state.currentCategory)) {
+    state.currentCategory = "";
+  }
+
+  if (state.currentQuality && !qualities.includes(state.currentQuality)) {
+    state.currentQuality = "";
+  }
+
+  categoryList.innerHTML =
+    `<div class="filter-item ${state.currentCategory === "" ? "active" : ""}" data-type="category" data-value="">全部</div>` +
+    categories.map(category => `
+      <div class="filter-item ${state.currentCategory === category ? "active" : ""}" data-type="category" data-value="${escapeHtml(category)}">
+        ${escapeHtml(category)}
+      </div>
+    `).join("");
+
+  qualityList.innerHTML =
+    `<div class="filter-item ${state.currentQuality === "" ? "active" : ""}" data-type="quality" data-value="">全部</div>` +
+    qualities.map(quality => `
+      <div class="filter-item ${state.currentQuality === quality ? "active" : ""}" data-type="quality" data-value="${escapeHtml(quality)}">
+        ${escapeHtml(quality)}
+      </div>
+    `).join("");
+
+  bindFilterClick();
+}
+
+function bindFilterClick() {
+  document.querySelectorAll(".filter-item").forEach(element => {
+    element.addEventListener("click", () => {
+      const { type, value } = element.dataset;
+
+      if (type === "category") state.currentCategory = value;
+      if (type === "quality") state.currentQuality = value;
+
+      renderFilters();
+      renderAll();
+    });
+  });
+}
+
+/* =========================================================
+ * 鍗佷簲銆佽喘涔伴€昏緫
+ * ========================================================= */
+
+function performBuyItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  if (state.gold < item.buyPrice) {
+    showMessageModal("金币不足", `当前金币不足，无法购买「${item.name}」。`);
+    return;
+  }
+
+  state.gold -= item.buyPrice;
+  state.inventory[id] = (state.inventory[id] || 0) + 1;
+
+  addRecord("购买", item.name, item.buyPrice, 1, {
+    itemId: item.id,
+    category: item.category,
+    quality: item.quality,
+    side: "buy"
+  });
+  saveState();
+  renderAll();
+
+  showMessageModal(
+    "购买成功",
+    `你已成功购买「${item.name}」。\n已放入仓库。\n消耗金币：${formatMoney(item.buyPrice)}\n当前金币：${formatMoney(state.gold)}`
+  );
+}
+
+function buyItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  showConfirmModal(
+    "确认购买",
+    `确定要购买「${item.name}」吗？\n需要消耗金币：${formatMoney(item.buyPrice)}\n购买后会自动放入仓库。`,
+    () => {
+      closeModal();
+      performBuyItem(id);
+    }
+  );
+}
+
+
+/* =========================================================
+ * 鍗佸叚銆佷粨搴撶洿鎺ュ嚭鍞紙绯荤粺鍥炴敹锛?
+ * 娉ㄦ剰锛氳繖涓嶆槸浜ゆ槗琛屾寕鍗曪紝鍙槸绯荤粺鐩存帴鎸?sellPrice 鍥炴敹
+ * ========================================================= */
+
+function performSellItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  const count = state.inventory[id] || 0;
+  if (count <= 0) {
+    showMessageModal("出售失败", `仓库中没有「${item.name}」，无法出售。`);
+    return;
+  }
+
+  state.inventory[id] -= 1;
+  if (state.inventory[id] <= 0) {
+    delete state.inventory[id];
+  }
+
+  state.gold += item.sellPrice;
+
+  addRecord("出售", item.name, item.sellPrice, 1, {
+    itemId: item.id,
+    category: item.category,
+    quality: item.quality,
+    side: "sell"
+  });
+  saveState();
+  renderAll();
+
+  showMessageModal(
+    "出售成功",
+    `你已成功出售「${item.name}」。\n获得金币：${formatMoney(item.sellPrice)}\n当前金币：${formatMoney(state.gold)}`
+  );
+}
+
+function sellItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  const count = state.inventory[id] || 0;
+  if (count <= 0) {
+    showMessageModal("出售失败", `仓库中没有「${item.name}」，无法出售。`);
+    return;
+  }
+
+  showConfirmModal(
+    "确认出售",
+    `确定要出售「${item.name}」吗？\n当前库存：${count}\n出售可获得金币：${formatMoney(item.sellPrice)}`,
+    () => {
+      closeModal();
+      performSellItem(id);
+    }
+  );
+}
+
+/* =========================================================
+ * 鍗佷竷銆佷笂鏋剁紪杈戝櫒鑽夌
+ * ========================================================= */
+
+/**
+ * 鏍规嵁鑽夌鎵惧埌褰撳墠姝ｅ湪缂栬緫鐨勭墿鍝?
+ */
+function getDraftItem() {
+  if (!state.listingDraft) return null;
+  return state.items.find(item => item.id === state.listingDraft.itemId) || null;
+}
+
+/**
+ * 淇濊瘉鑽夌鍊兼案杩滃悎娉?
+ * - 鏁伴噺涓嶈兘瓒呰繃搴撳瓨
+ * - 浠锋牸涓嶈兘浣庝簬鏈€浣庝环 / 涓嶈兘楂樹簬鏈€楂樹环
+ */
+function ensureDraftValid() {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const stockCount = state.inventory[item.id] || 0;
+  const minPrice = getMinListPrice(item);
+  const maxPrice = getMaxListPrice(item);
+  const maxQuantity = Math.max(1, stockCount);
+
+  if (stockCount <= 0) {
+    state.listingDraft.quantity = 0;
+  } else {
+    state.listingDraft.quantity = clamp(
+      Math.floor(Number(state.listingDraft.quantity) || 1),
+      1,
+      maxQuantity
+    );
+  }
+
+  let price = Math.round(Number(state.listingDraft.currentPrice) || getReferencePrice(item));
+  if (price < minPrice) price = minPrice;
+  if (price > maxPrice) price = maxPrice;
+
+  state.listingDraft.currentPrice = price;
+}
+
+/**
+ * 鎵撳紑涓婃灦缂栬緫鍣?
+ * 鐐瑰嚮鍑哄敭椤靛彸渚х墿鍝佸崱鐗囨椂浼氳蛋杩欓噷
+ */
+function openListingEditor(itemId) {
+  const item = state.items.find(entry => entry.id === itemId);
+  if (!item) return;
+
+  const stockCount = state.inventory[item.id] || 0;
+  if (stockCount <= 0) {
+    showMessageModal("无法上架", `仓库中没有「${item.name}」。`);
+    return;
+  }
+
+  const availableSlots = getAvailableListingSlots();
+  if (false && availableSlots <= 0) {
+    showMessageModal("售位已满", `当前可用槽位为 0，可花费 ${formatMoney(LISTING_SLOT_PRICE)} 金币购买新槽位。`);
+    return;
+  }
+
+  state.listingDraft = {
+    itemId,
+    quantity: Math.min(1, stockCount) || 0,
+    currentPrice: Math.max(getReferencePrice(item), getMinListPrice(item)),
+    showDetail: false
+  };
+
+  renderListingEditor();
+
+  const mask = $("listingEditorMask");
+  if (mask) {
+    mask.classList.add("show");
+  }
+}
+
+/**
+ * 鍏抽棴涓婃灦缂栬緫鍣?
+ */
+function closeListingEditor() {
+  const mask = $("listingEditorMask");
+  if (mask) {
+    mask.classList.remove("show");
+  }
+
+  state.listingDraft = null;
+}
+
+/**
+ * 鏍规嵁褰撳墠鑽夌鐢熸垚涓婃灦淇℃伅
+ */
+function getDraftInfo() {
+  if (!state.listingDraft) return null;
+
+  const item = getDraftItem();
+  if (!item) return null;
+
+  ensureDraftValid();
+
+  return calculateListingInfo(
+    item,
+    state.listingDraft.currentPrice,
+    state.listingDraft.quantity
+  );
+}
+
+/**
+ * 鏁伴噺 - / +
+ */
+function changeDraftQuantity(delta) {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const stockCount = state.inventory[item.id] || 1;
+  const maxQuantity = Math.max(1, stockCount);
+
+  if (stockCount <= 0) {
+    state.listingDraft.quantity = 0;
+  } else {
+    state.listingDraft.quantity = clamp(
+      (state.listingDraft.quantity || 1) + delta,
+      1,
+      maxQuantity
+    );
+  }
+
+  renderListingEditor();
+}
+
+/**
+ * 閫氳繃婊戞潯鐩存帴璁剧疆鏁伴噺
+ */
+function setDraftQuantity(value) {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const stockCount = state.inventory[item.id] || 1;
+  const maxQuantity = Math.max(1, stockCount);
+
+  if (stockCount <= 0) {
+    state.listingDraft.quantity = 0;
+  } else {
+    state.listingDraft.quantity = clamp(
+      Math.floor(Number(value) || 1),
+      1,
+      maxQuantity
+    );
+  }
+
+  renderListingEditor();
+}
+
+/**
+ * 浠锋牸 - 锛氭寜涓婁竴涓环鏍?/ 1.01 鍥為€€
+ */
+function decreaseDraftPrice() {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const minPrice = getMinListPrice(item);
+
+  let price = Math.round((state.listingDraft.currentPrice || minPrice) / 1.01);
+  if (price < minPrice) price = minPrice;
+
+  state.listingDraft.currentPrice = price;
+  renderListingEditor();
+}
+
+/**
+ * 浠锋牸 + 锛氭寜涓婁竴涓环鏍?* 1.01 澧為暱
+ */
+function increaseDraftPrice() {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const maxPrice = getMaxListPrice(item);
+
+  let price = Math.round((state.listingDraft.currentPrice || getReferencePrice(item)) * 1.01);
+  if (price > maxPrice) price = maxPrice;
+
+  state.listingDraft.currentPrice = price;
+  renderListingEditor();
+}
+
+/**
+ * 杈撳叆妗嗙洿鎺ヨ缃环鏍?
+ * 浣庝簬鏈€浣庝环鏃惰嚜鍔ㄤ慨姝?
+ */
+function setDraftPrice(value) {
+  if (!state.listingDraft) return;
+
+  const item = getDraftItem();
+  if (!item) return;
+
+  const minPrice = getMinListPrice(item);
+  const maxPrice = getMaxListPrice(item);
+
+  let price = Math.round(Number(value) || minPrice);
+
+  if (price < minPrice) price = minPrice;
+  if (price > maxPrice) price = maxPrice;
+
+  state.listingDraft.currentPrice = price;
+  renderListingEditor();
+}
+
+/**
+ * 灞曞紑 / 鏀惰捣鈥?鈥濊鎯呭尯
+ */
+function toggleDraftDetail() {
+  if (!state.listingDraft) return;
+
+  state.listingDraft.showDetail = !state.listingDraft.showDetail;
+  renderListingEditor();
+}
+
+
+/* =========================================================
+ * 鍗佸叓銆佷笂鏋剁紪杈戝櫒 - 宸︿晶鍥捐〃
+ *
+ * 鏌卞瓙瑙勫垯锛? * 1. 鏈€澶氭樉绀?9 鏍规煴瀛? * 2. 榛樿绗?5 鏍规煴瀛愮殑鍖洪棿涓婇檺 = 鍦ㄥ敭鏈€浣庝环锛堝綋鍓嶅弬鑰冧环锛? * 3. 姣忔鍖洪棿闀垮害 = (鍞环涓婇檺 - 鍞环涓嬮檺) * 0.33554794980203%
+ * 4. 鍙充晶鏈€鍚?1 鏍规煴瀛愮殑鍖洪棿涓婇檺鐩存帴浣跨敤鍞环涓婇檺
+ * 5. 褰撳墠鍞环钀藉湪鍝釜鍖洪棿锛屽氨楂樹寒鍝牴鏌卞瓙
+ * ========================================================= */
+function buildListingPriceBars(info) {
+  const item = info.item || {};
+  const priceLower = toNumber(item.priceLower) || info.minPrice;
+  const priceUpper = toNumber(item.priceUpper) || info.maxPrice;
+  const range = Math.max(1, priceUpper - priceLower);
+  const intervalSize = Math.max(1, Math.round(range * LISTING_PRICE_BAR_INTERVAL_RATE));
+  const centerUpperBound = info.referencePrice;
+  const rightFiniteBarCount = Math.max(0, LISTING_PRICE_BAR_COUNT - LISTING_PRICE_BAR_CENTER_INDEX - 2);
+
+  const candidateUpperBounds = [];
+  for (let offset = -LISTING_PRICE_BAR_CENTER_INDEX; offset <= rightFiniteBarCount; offset += 1) {
+    candidateUpperBounds.push(centerUpperBound + offset * intervalSize);
+  }
+  candidateUpperBounds.push(priceUpper);
+
+  const upperBounds = [];
+  candidateUpperBounds.forEach(value => {
+    const fixedValue = clamp(Math.round(value), priceLower, priceUpper);
+    if (!upperBounds.length || fixedValue > upperBounds[upperBounds.length - 1]) {
+      upperBounds.push(fixedValue);
+    }
+  });
+
+  const centerBarIndex = upperBounds.findIndex(value => value === clamp(Math.round(centerUpperBound), priceLower, priceUpper));
+  const activeIndex = upperBounds.findIndex((upperBound, index) => {
+    const lowerBound = index === 0 ? priceLower : upperBounds[index - 1];
+
+    if (index === 0) {
+      return info.currentPrice >= lowerBound && info.currentPrice <= upperBound;
+    }
+
+    return info.currentPrice > lowerBound && info.currentPrice <= upperBound;
+  });
+
+  const normalizedCenterIndex = centerBarIndex >= 0 ? centerBarIndex : Math.min(LISTING_PRICE_BAR_CENTER_INDEX, upperBounds.length - 1);
+  const normalizedActiveIndex = activeIndex >= 0 ? activeIndex : upperBounds.length - 1;
+
+  const allBars = upperBounds.map((upperBound, index) => {
+    const distance = Math.abs(index - normalizedCenterIndex);
+    const height = Math.max(14, 78 - distance * 14);
+
+    return {
+      index,
+      upperBound,
+      lowerBound: index === 0 ? priceLower : upperBounds[index - 1],
+      height,
+      isActive: index === normalizedActiveIndex
+    };
+  });
+
+  const maxStartIndex = Math.max(0, allBars.length - LISTING_PRICE_VISIBLE_BAR_COUNT);
+  const defaultStartIndex = Math.min(LISTING_PRICE_BAR_CENTER_INDEX, maxStartIndex);
+  const visibleStartIndex = Math.min(defaultStartIndex, normalizedActiveIndex);
+
+  return allBars.slice(
+    visibleStartIndex,
+    visibleStartIndex + LISTING_PRICE_VISIBLE_BAR_COUNT
+  );
+}
+
+function renderListingPriceChart(info) {
+  const chart = $("listingPriceChart");
+  if (!chart) return;
+
+  const bars = buildListingPriceBars(info);
+  chart.style.gridTemplateColumns = `repeat(${bars.length}, minmax(0, 1fr))`;
+
+  chart.innerHTML = bars.map(bar => `
+    <div class="listing-bar-item ${bar.isActive ? "active" : ""}">
+      <div class="listing-bar-top">${formatMoney(bar.upperBound)}</div>
+      <div class="listing-bar-wrap">
+        <div class="listing-bar-fill" style="height:${bar.height}%;"></div>
+      </div>
+      <div class="listing-bar-bottom">${formatMoney(bar.upperBound)}</div>
+    </div>
+  `).join("");
+}
+
+
+/* =========================================================
+ * 鍗佷節銆佷笂鏋剁紪杈戝櫒娓叉煋
+ * ========================================================= */
+function renderListingEditor() {
+  const info = getDraftInfo();
+  if (!info) return;
+
+  const item = info.item;
+
+  const nameEl = $("listingEditorName");
+  const categoryEl = $("listingEditorCategory");
+  const lowestEl = $("listingLowestPriceText");
+  const qtyTextEl = $("listingQtyText");
+  const slotUseEl = $("listingSlotUseText");
+  const qtyRangeEl = $("listingQtyRange");
+  const referenceEl = $("listingReferencePriceText");
+  const priceInputEl = $("listingPriceInput");
+  const expectedEl = $("listingExpectedText");
+  const detailBoxEl = $("listingDetailBox");
+  const detailSaleTotalEl = $("detailSaleTotalText");
+  const detailFeeTextEl = $("detailFeeText");
+  const detailDepositEl = $("detailDepositText");
+  const detailFeeAxisEl = $("detailFeeAxisText");
+  const detailFeeIndexEl = $("detailFeeIndexText");
+  const detailExpectedEl = $("detailExpectedText");
+  const detailFeeRateEl = $("detailFeeRateText");
+  const priceWarningEl = $("listingPriceWarning");
+  const confirmBtnEl = $("listingConfirmBtn");
+
+  if (nameEl) nameEl.textContent = item.name;
+  if (categoryEl) categoryEl.textContent = `${item.category || "-"} / ${item.quality || "-"}`;
+  if (lowestEl) lowestEl.textContent = formatMoney(info.referencePrice);
+
+  // 鏁伴噺鏄剧ず锛氬綋鍓嶄笂鏋舵暟閲?/ 浠撳簱搴撳瓨
+  if (qtyTextEl) qtyTextEl.textContent = `${info.quantity}/${info.stockCount}`;
+
+  // 鍞綅鏄剧ず锛氬綋鍓嶅凡鐢?/ 鏈€澶?
+  if (slotUseEl) slotUseEl.textContent = `${info.slotsToUse}/${info.availableSlots}`;
+
+  // 鏁伴噺婊戞潯
+  if (qtyRangeEl) {
+  // 杩欓噷鎶婃渶灏忓€兼敼鎴?0
+  // 杩欐牱褰?quantity=1 涓?stockCount=1 鏃讹紝婊戞潯浼氭樉绀烘弧鏍?
+    qtyRangeEl.min = 0;
+    qtyRangeEl.max = Math.max(1, info.stockCount);
+    qtyRangeEl.value = Math.min(info.quantity, Number(qtyRangeEl.max));
+  }
+
+  // 鍙傝€冧环
+  if (referenceEl) referenceEl.textContent = formatMoney(info.referencePrice);
+
+  // 褰撳墠杈撳叆浠锋牸锛堝崟浠讹級
+  if (priceInputEl) priceInputEl.value = String(info.currentPrice);
+
+  // 棰勬湡鏀跺叆锛堝悎璁★級
+  if (expectedEl) expectedEl.textContent = formatMoney(info.expectedReceive);
+
+  /* -------------------------
+   * 鈥?鈥?璇︽儏鍖?
+   * 杩欓噷灞曠ず鐨勬槸鍚堣鏁版嵁
+   * 鎵嬬画璐圭巼鏄剧ず鐨勬槸鍗曚欢鍒ゅ畾鍚庣殑鎵嬬画璐圭巼
+   * ------------------------- */
+  if (detailSaleTotalEl) detailSaleTotalEl.textContent = formatMoney(info.totalPrice);
+  if (detailFeeTextEl) detailFeeTextEl.textContent = formatMoney(info.fee);
+  if (detailDepositEl) detailDepositEl.textContent = formatMoney(info.deposit);
+  if (detailFeeAxisEl) detailFeeAxisEl.textContent = info.feeAxis.toFixed(1);
+  if (detailFeeIndexEl) detailFeeIndexEl.textContent = String(info.feeIndex);
+  if (detailExpectedEl) detailExpectedEl.textContent = formatMoney(info.expectedReceive);
+  if (detailFeeRateEl) detailFeeRateEl.textContent = `${(info.feeRate * 100).toFixed(2)}%`;
+
+  if (detailBoxEl) {
+    detailBoxEl.style.display = state.listingDraft && state.listingDraft.showDetail ? "block" : "none";
+  }
+
+  // 浠锋牸鎻愮ず
+  if (priceWarningEl) {
+    if (info.currentPrice <= info.minPrice) {
+      priceWarningEl.textContent =
+        `当前价格已按最低售价修正：${formatMoney(info.minPrice)}（范围 ${formatMoney(info.minPrice)} ~ ${formatMoney(info.maxPrice)}）`;
+    } else {
+      priceWarningEl.textContent =
+        `可定价范围：${formatMoney(info.minPrice)} ~ ${formatMoney(info.maxPrice)}`;
+    }
+  }
+
+  // 涓婃灦鎸夐挳鏄惁鍙偣
+  if (confirmBtnEl) {
+    const canList =
+      info.stockCount > 0 &&
+      info.quantity > 0 &&
+      state.gold >= info.deposit; // 涓婃灦鏃堕渶瑕佹敮浠樼殑鏄€滄€讳繚璇侀噾鈥?
+
+    confirmBtnEl.disabled = !canList;
+    confirmBtnEl.textContent = canList ? "涓婃灦" : "鏃犳硶涓婃灦";
+  }
+
+  renderListingPriceChart(info);
+}
+
+/* =========================================================
+ * 浜屽崄銆佺‘璁や笂鏋?
+ *
+ * 娉ㄦ剰锛?
+ * - 涓€涓寕鍗曞彧鍗犱竴涓灦瀛?
+ * - 鍗充娇涓€娆′笂鏋跺浠讹紝涔熸槸涓€涓灦瀛愶紝鏁伴噺鍐欏湪鎸傚崟閲?
+ * - 涓婃灦鏃舵墸鐨勬槸鈥滄€讳繚璇侀噾鈥?
+ * - 涓嬫灦鏃朵繚璇侀噾涓嶈繑杩?
+ * ========================================================= */
+function confirmListing() {}
+
+function showListingDetail() {}
+
+function unlistItem() {}
+
+
+/* =========================================================
+ * 浜屽崄浜屻€佹覆鏌?- 璐拱椤?
+ * ========================================================= */
+function renderBuyGrid() {
+  const wrap = $("buyGrid");
+  if (!wrap) return;
+
+  if (!state.items.length) {
+    wrap.innerHTML = `<div class="empty-block">暂无静态数据，请先运行 build-static-data.js</div>`;
+    return;
+  }
+
+  const items = getFilteredItems();
+
+  if (!items.length) {
+    wrap.innerHTML = `<div class="empty-block">没有符合条件的物品</div>`;
+    return;
+  }
+
+  wrap.innerHTML = items.map(item => `
+    <div class="item-card clickable-card" data-item-id="${item.id}" onclick="handleItemDetailCardClick(event, '${item.id}')">
+      <div class="quality-badge q-${item.quality || "白"}">${item.quality || "-"}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-category">${item.category || "-"}</div>
+
+      <div class="item-main">
+        <div class="item-image">物品图片</div>
+
+        <div class="item-right">
+          <div class="item-price">${formatMoney(item.buyPrice)}</div>
+          <button class="card-btn" onclick="event.stopPropagation(); buyItem('${item.id}')">购买</button>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+function renderSellGrid() {
+  const wrap = $("sellSelectGrid") || $("sellGrid");
+  if (!wrap) return;
+
+  if (!state.items.length) {
+    wrap.innerHTML = `<div class="empty-block">暂无静态数据</div>`;
+    return;
+  }
+
+  const items = getInventoryItemsRaw();
+
+  if (!items.length) {
+    wrap.innerHTML = `<div class="empty-block">当前没有可上架的仓库物品</div>`;
+    return;
+  }
+
+  wrap.innerHTML = items.map(item => `
+    <div class="item-card compact-card clickable-card" data-item-id="${item.id}" onclick="handleListingEditorCardClick(event, '${item.id}')">
+      <div class="quality-badge q-${item.quality || "白"}">${item.quality || "-"}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-category">${item.category || "-"} · <span class="count-text">库存 ${item.count}</span></div>
+
+      <div class="item-main">
+        <div class="item-image">仓库物品</div>
+
+        <div class="item-right">
+          <div class="item-price-label">参考价格</div>
+          <div class="item-price">${formatMoney(getReferencePrice(item))}</div>
+          <div class="item-actions">
+            <button class="card-btn info" onclick="event.stopPropagation(); openListingEditor('${item.id}')">上架</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+function renderWarehouseGrid() {
+  const wrap = $("warehouseGrid");
+  const summary = $("warehouseSummaryText");
+  if (!wrap || !summary) return;
+
+  if (!state.items.length) {
+    wrap.innerHTML = `<div class="empty-block">暂无静态数据</div>`;
+    summary.textContent = "暂无数据";
+    return;
+  }
+
+  const items = getInventoryItemsRaw();
+  const totalCount = items.reduce((sum, item) => sum + item.count, 0);
+
+  if (!items.length) {
+    wrap.innerHTML = `<div class="empty-block">仓库为空，先去交易行购买一些物品吧</div>`;
+    summary.textContent = "当前仓库为空";
+    return;
+  }
+
+  summary.textContent = `仓库共有 ${items.length} 种物品，合计 ${totalCount} 件`;
+
+  wrap.innerHTML = items.map(item => `
+    <div class="item-card compact-card clickable-card" data-item-id="${item.id}" onclick="handleItemDetailCardClick(event, '${item.id}')">
+      <div class="quality-badge q-${item.quality || "白"}">${item.quality || "-"}</div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-category">${item.category || "-"} · <span class="count-text">库存 ${item.count}</span></div>
+
+      <div class="item-main">
+        <div class="item-image">仓库物品</div>
+
+        <div class="item-right">
+          <div class="item-price-label">系统回收价</div>
+          <div class="item-price">${formatMoney(item.sellPrice)}</div>
+          <div class="item-actions">
+            <button class="card-btn info" onclick="event.stopPropagation(); goToTradeSellTab();">前往交易行</button>
+            <button class="card-btn sell" onclick="event.stopPropagation(); sellItem('${item.id}')">出售</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+function getDepartmentTaskById(taskId) {
+  return state.departmentTasks.find(task => task.taskId === String(taskId));
+}
+
+function getDepartmentTaskDisplayTarget(task) {
+  const target = toText(task?.target);
+  const targetCount = task?.targetCount;
+
+  if (!target) return "-";
+  if (targetCount === "" || targetCount == null) return target;
+  return `${target} x ${formatMixedValue(targetCount)}`;
+}
+
+function getDepartmentTaskLabel(taskId, department = state.currentDepartment) {
+  if (!taskId) return "无前置任务";
+
+  const departmentTask = getDepartmentTasks(department).find(task => task.taskId === String(taskId));
+  if (departmentTask) {
+    return `${departmentTask.name} (${departmentTask.taskId})`;
+  }
+
+  return String(taskId);
+}
+
+function joinDepartmentPreview(names, limit = 2) {
+  const list = names.filter(Boolean);
+  if (!list.length) return "-";
+  if (list.length <= limit) return list.join(" / ");
+  return `${list.slice(0, limit).join(" / ")} +${list.length - limit}`;
+}
+
+function getDepartmentRewardSummary(tasks) {
+  const rewardMap = new Map();
+
+  tasks.forEach(task => {
+    task.rewards.forEach(reward => {
+      if (!reward.name) return;
+
+      if (!rewardMap.has(reward.name)) {
+        rewardMap.set(reward.name, {
+          name: reward.name,
+          amount: typeof reward.amount === "number" ? 0 : ""
+        });
+      }
+
+      const target = rewardMap.get(reward.name);
+      if (typeof reward.amount === "number") {
+        target.amount = Number(target.amount || 0) + reward.amount;
+      } else if (!target.amount) {
+        target.amount = reward.amount;
+      }
+    });
+  });
+
+  return Array.from(rewardMap.values());
+}
+
+function ensureDepartmentTaskSelection() {
+  const departments = getDepartmentNames();
+
+  if (!departments.length) {
+    state.currentDepartment = "";
+    state.selectedDepartmentTaskId = "";
+    return [];
+  }
+
+  if (!departments.includes(state.currentDepartment)) {
+    state.currentDepartment = departments[0];
+  }
+
+  const tasks = getDepartmentTasks(state.currentDepartment);
+  if (!tasks.some(task => task.taskId === state.selectedDepartmentTaskId)) {
+    const taskIds = new Set(tasks.map(task => task.taskId));
+    const firstRoot = tasks.find(task => !task.preTaskId || !taskIds.has(task.preTaskId));
+    state.selectedDepartmentTaskId = firstRoot?.taskId || tasks[0]?.taskId || "";
+  }
+
+  return tasks;
+}
+
+function buildDepartmentTaskGraph(tasks) {
+  const taskMap = new Map();
+
+  tasks.forEach(task => {
+    taskMap.set(task.taskId, {
+      ...task,
+      children: [],
+      depth: 0,
+      row: 0,
+      left: 0,
+      top: 0
+    });
+  });
+
+  const sortTasks = (a, b) => {
+    const seqDiff = (a.seq || 0) - (b.seq || 0);
+    if (seqDiff !== 0) return seqDiff;
+
+    const idDiff = toNumber(a.taskId) - toNumber(b.taskId);
+    if (idDiff !== 0) return idDiff;
+
+    return String(a.taskId).localeCompare(String(b.taskId), "zh-CN");
+  };
+
+  taskMap.forEach(task => {
+    if (task.preTaskId && taskMap.has(task.preTaskId)) {
+      taskMap.get(task.preTaskId).children.push(task.taskId);
+    }
+  });
+
+  taskMap.forEach(task => {
+    task.children.sort((leftId, rightId) => sortTasks(taskMap.get(leftId), taskMap.get(rightId)));
+  });
+
+  const roots = Array.from(taskMap.values())
+    .filter(task => !task.preTaskId || !taskMap.has(task.preTaskId))
+    .sort(sortTasks);
+
+  function getDepth(taskId) {
+    const task = taskMap.get(taskId);
+    if (!task) return 0;
+
+    if (!task.preTaskId || !taskMap.has(task.preTaskId)) {
+      task.depth = 0;
+      return 0;
+    }
+
+    if (task.depth > 0) {
+      return task.depth;
+    }
+
+    task.depth = getDepth(task.preTaskId) + 1;
+    return task.depth;
+  }
+
+  taskMap.forEach(task => {
+    task.depth = getDepth(task.taskId);
+  });
+
+  let nextRow = 0;
+  function assignRow(taskId) {
+    const task = taskMap.get(taskId);
+    if (!task) return 0;
+
+    if (!task.children.length) {
+      task.row = nextRow;
+      nextRow += 1;
+      return task.row;
+    }
+
+    const childRows = task.children.map(assignRow);
+    task.row = (childRows[0] + childRows[childRows.length - 1]) / 2;
+    return task.row;
+  }
+
+  roots.forEach((root, index) => {
+    if (index > 0) nextRow += 1;
+    assignRow(root.taskId);
+  });
+
+  const nodes = Array.from(taskMap.values()).sort((a, b) => {
+    const depthDiff = a.depth - b.depth;
+    if (depthDiff !== 0) return depthDiff;
+
+    const rowDiff = a.row - b.row;
+    if (rowDiff !== 0) return rowDiff;
+
+    return sortTasks(a, b);
+  });
+
+  return {
+    taskMap,
+    roots,
+    nodes,
+    maxDepth: nodes.reduce((max, task) => Math.max(max, task.depth), 0),
+    maxRow: nodes.reduce((max, task) => Math.max(max, task.row), 0)
+  };
+}
+
+function getDepartmentRelatedTaskIds(graph, taskId) {
+  const relatedIds = new Set();
+  const startTask = graph.taskMap.get(taskId);
+
+  if (!startTask) return relatedIds;
+
+  function markAncestors(currentTask) {
+    if (!currentTask || relatedIds.has(currentTask.taskId)) return;
+    relatedIds.add(currentTask.taskId);
+
+    if (currentTask.preTaskId && graph.taskMap.has(currentTask.preTaskId)) {
+      markAncestors(graph.taskMap.get(currentTask.preTaskId));
+    }
+  }
+
+  function markDescendants(currentTask) {
+    if (!currentTask) return;
+    relatedIds.add(currentTask.taskId);
+    currentTask.children.forEach(childId => {
+      markDescendants(graph.taskMap.get(childId));
+    });
+  }
+
+  markAncestors(startTask);
+  markDescendants(startTask);
+  return relatedIds;
+}
+
+function getDepartmentSummary(department) {
+  const tasks = getDepartmentTasks(department);
+  const graph = buildDepartmentTaskGraph(tasks);
+  const leafNames = graph.nodes.filter(task => !task.children.length).map(task => task.name);
+
+  return {
+    department,
+    taskCount: tasks.length,
+    rootNames: graph.roots.map(task => task.name),
+    leafNames,
+    branchCount: graph.nodes.filter(task => task.children.length > 1).length,
+    rewards: getDepartmentRewardSummary(tasks)
+  };
+}
+
+function selectDepartment(department) {
+  if (!department || department === state.currentDepartment) return;
+
+  state.currentDepartment = department;
+  state.selectedDepartmentTaskId = "";
+  renderDepartmentView();
+}
+
+function selectDepartmentTask(taskId) {
+  const task = getDepartmentTaskById(taskId);
+  if (!task) return;
+
+  state.currentDepartment = task.department;
+  state.selectedDepartmentTaskId = task.taskId;
+  renderDepartmentView();
+}
+
+function renderDepartmentTabs() {
+  const wrap = $("departmentTabList");
+  if (!wrap) return;
+
+  const departments = getDepartmentNames();
+  if (!departments.length) {
+    wrap.innerHTML = `<div class="department-empty-note">鏆傛棤閮ㄩ棬浠诲姟鏁版嵁</div>`;
+    return;
+  }
+
+  wrap.innerHTML = departments.map(department => {
+    const summary = getDepartmentSummary(department);
+    const rewardPreview = summary.rewards
+      .slice(0, 2)
+      .map(reward => `${reward.name} ${formatMixedValue(reward.amount)}`)
+      .join(" 路 ");
+
+    return `
+      <button
+        type="button"
+        class="department-tab-card ${department === state.currentDepartment ? "active" : ""}"
+        data-department="${escapeHtml(department)}"
+      >
+        <span class="department-tab-name">${escapeHtml(department)}</span>
+        <span class="department-tab-meta">${summary.taskCount} 涓换鍔?路 ${summary.branchCount} 涓垎鏀偣</span>
+        <span class="department-tab-reward">${escapeHtml(rewardPreview || "鐐瑰嚮鏌ョ湅浠诲姟閾捐矾")}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderDepartmentDetail() {
+  const summaryText = $("departmentSummaryText");
+  if (summaryText) {
+    const departments = getDepartmentNames();
+    summaryText.textContent = state.departmentTasks.length
+      ? `共 ${departments.length} 个部门，${state.departmentTasks.length} 个任务节点`
+      : "暂无部门任务数据";
+  }
+
+  const task = getDepartmentTaskById(state.selectedDepartmentTaskId);
+  if (!task) {
+    $("departmentTaskDetailName").textContent = "-";
+    $("departmentTaskDetailDepartment").textContent = "-";
+    $("departmentTaskDetailType").textContent = "-";
+    $("departmentTaskDetailMap").textContent = "-";
+    $("departmentTaskDetailPreTask").textContent = "-";
+    $("departmentTaskDetailTarget").textContent = "-";
+    $("departmentTaskDetailDescription").textContent = "点击左侧任务节点后，这里会显示详细信息。";
+
+    const rewardWrap = $("departmentTaskDetailRewards");
+    if (rewardWrap) {
+      rewardWrap.innerHTML = `<div class="department-task-reward-empty">鏆傛棤濂栧姳淇℃伅</div>`;
+    }
+    return;
+  }
+
+  $("departmentTaskDetailName").textContent = task.name || "-";
+  $("departmentTaskDetailDepartment").textContent = task.department || "-";
+  $("departmentTaskDetailType").textContent = task.type || "-";
+  $("departmentTaskDetailMap").textContent = task.map || "-";
+  $("departmentTaskDetailPreTask").textContent = getDepartmentTaskLabel(task.preTaskId, task.department);
+  $("departmentTaskDetailTarget").textContent = getDepartmentTaskDisplayTarget(task);
+  $("departmentTaskDetailDescription").textContent = task.description || "鏆傛棤浠诲姟鎻忚堪";
+
+  const rewardWrap = $("departmentTaskDetailRewards");
+  if (rewardWrap) {
+    rewardWrap.innerHTML = task.rewards.length
+      ? task.rewards.map(reward => `
+        <div class="department-task-reward-card">
+          <div class="department-task-reward-icon">${escapeHtml(reward.name.slice(0, 2))}</div>
+          <div class="department-task-reward-name">${escapeHtml(reward.name)}</div>
+          <div class="department-task-reward-amount">${escapeHtml(formatMixedValue(reward.amount))}</div>
+        </div>
+      `).join("")
+      : `<div class="department-task-reward-empty">鏆傛棤濂栧姳淇℃伅</div>`;
+  }
+}
+
+function renderDepartmentTaskFlow() {
+  const titleEl = $("departmentGraphTitle");
+  const subtitleEl = $("departmentGraphSubtitle");
+  const flowWrap = $("departmentTaskFlowWrap");
+  const flow = $("departmentTaskFlow");
+  const svg = $("departmentTaskFlowLines");
+  if (!titleEl || !subtitleEl || !flowWrap || !flow || !svg) return;
+
+  const tasks = ensureDepartmentTaskSelection();
+  if (!tasks.length) {
+    titleEl.textContent = "鏆傛棤閮ㄩ棬浠诲姟";
+    subtitleEl.textContent = "璇峰厛鍦?data 涓噯澶囦换鍔¤〃";
+    flow.style.width = "100%";
+    flow.style.height = "100%";
+    flow.innerHTML = `<div class="department-flow-empty">鏆傛棤閮ㄩ棬浠诲姟鏁版嵁</div>`;
+    svg.innerHTML = "";
+    svg.setAttribute("viewBox", "0 0 1 1");
+    return;
+  }
+
+  const graph = buildDepartmentTaskGraph(tasks);
+  const selectedTask = graph.taskMap.get(state.selectedDepartmentTaskId) || graph.roots[0] || graph.nodes[0];
+  if (selectedTask) {
+    state.selectedDepartmentTaskId = selectedTask.taskId;
+  }
+
+  const relatedTaskIds = getDepartmentRelatedTaskIds(graph, state.selectedDepartmentTaskId);
+  const layout = {
+    nodeWidth: 240,
+    nodeHeight: 74,
+    columnGap: 56,
+    rowGap: 52,
+    paddingX: 32,
+    paddingY: 36
+  };
+
+  graph.nodes.forEach(task => {
+    task.left = layout.paddingX + task.row * (layout.nodeWidth + layout.columnGap);
+    task.top = layout.paddingY + task.depth * (layout.nodeHeight + layout.rowGap);
+  });
+
+  const width = Math.max(
+    flowWrap.clientWidth || 960,
+    layout.paddingX * 2 + (Math.ceil(graph.maxRow) + 1) * layout.nodeWidth + Math.ceil(graph.maxRow) * layout.columnGap
+  );
+  const height = Math.max(
+    flowWrap.clientHeight || 560,
+    layout.paddingY * 2 + (graph.maxDepth + 1) * layout.nodeHeight + graph.maxDepth * layout.rowGap
+  );
+
+  titleEl.textContent = state.currentDepartment;
+  subtitleEl.textContent = `鍏?${tasks.length} 涓换鍔¤妭鐐?路 ${graph.roots.length} 鏉¤捣濮嬮摼璺?路 褰撳墠閫変腑 ${selectedTask?.name || "-"}`;
+
+  flow.style.width = `${width}px`;
+  flow.style.height = `${height}px`;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", String(width));
+  svg.setAttribute("height", String(height));
+
+  flow.innerHTML = graph.nodes.map(task => {
+    const isSelected = task.taskId === state.selectedDepartmentTaskId;
+    const isRelated = relatedTaskIds.has(task.taskId);
+
+    return `
+      <div
+        class="department-task-node ${isSelected ? "selected" : ""} ${isRelated ? "related" : ""}"
+        style="left:${task.left}px; top:${task.top}px;"
+      >
+        <button
+          type="button"
+          class="department-task-main"
+          data-task-select="1"
+          data-task-id="${escapeHtml(task.taskId)}"
+        >
+          <span class="department-task-accent"></span>
+          <span class="department-task-copy">
+            <span class="department-task-name">${escapeHtml(task.name)}</span>
+            <span class="department-task-meta">${escapeHtml(task.type)}</span>
+          </span>
+        </button>
+      </div>
+    `;
+  }).join("");
+
+  svg.innerHTML = graph.nodes
+    .filter(task => task.preTaskId && graph.taskMap.has(task.preTaskId))
+    .map(task => {
+      const parent = graph.taskMap.get(task.preTaskId);
+      const startX = parent.left + layout.nodeWidth / 2;
+      const startY = parent.top + layout.nodeHeight;
+      const endX = task.left + layout.nodeWidth / 2;
+      const endY = task.top;
+      const middleY = Math.round((startY + endY) / 2);
+      const isActive = relatedTaskIds.has(parent.taskId) && relatedTaskIds.has(task.taskId);
+
+      return `
+        <path
+          class="department-task-line ${isActive ? "active" : ""}"
+          d="M ${startX} ${startY} L ${startX} ${middleY} L ${endX} ${middleY} L ${endX} ${endY}"
+        />
+      `;
+    })
+    .join("");
+}
+
+function renderDepartmentView() {
+  ensureDepartmentTaskSelection();
+  renderDepartmentTabs();
+  renderDepartmentTaskFlow();
+  renderDepartmentDetail();
+}
+
+function openDepartmentTaskDetail(taskId) {
+  const task = getDepartmentTaskById(taskId);
+  if (!task) return;
+
+  state.currentDepartment = task.department;
+  state.selectedDepartmentTaskId = task.taskId;
+  renderDepartmentView();
+}
+
+function closeDepartmentTaskDetail() {
+  state.selectedDepartmentTaskId = "";
+  renderDepartmentView();
+}
+
+/* =========================================================
+ * 浜屽崄鍏€佹覆鏌?- 浜ゆ槗璁板綍
+ * ========================================================= */
+function renderRecordTable() {}
+
+function renderAll() {}
+
+function switchTab(tab) {
+  state.currentTab = tab;
+}
+
+function bindEvents() {}
+function bindEvents() {
+  document.querySelectorAll(".market-tab").forEach(button => {
+    button.addEventListener("click", () => {
+      switchTab(button.dataset.tab);
+    });
+  });
+
+  document.querySelectorAll(".top-nav .nav-item[data-view]").forEach(item => {
+    item.addEventListener("click", () => {
+      switchView(item.dataset.view);
+    });
+  });
+
+  bind("departmentTabList", "click", event => {
+    const button = event.target.closest(".department-tab-card");
+    if (!button) return;
+    selectDepartment(button.dataset.department);
+  });
+
+  bind("departmentTaskFlow", "click", event => {
+    const taskButton = event.target.closest("[data-task-select]");
+    if (taskButton) {
+      selectDepartmentTask(taskButton.dataset.taskId);
+    }
+  });
+
+  bind("searchInput", "input", event => {
+    state.keyword = event.target.value.trim();
+    renderAll();
+  });
+
+  bind("reloadStaticBtn", "click", () => {
+    loadStaticData();
+    showMessageModal("读取完成", "已重新读取当前静态数据。");
+  });
+
+  bind("clearRecordBtn", "click", () => {
+    showConfirmModal("确认清空", "确定要清空全部交易记录吗？", () => {
+      state.records = [];
+      saveState();
+      renderAll();
+      closeModal();
+      showMessageModal("清空成功", "交易记录已清空。");
+    });
+  });
+
+  bind("addGoldBtn", "click", () => {
+    addCustomGold();
+  });
+
+  bind("goldAmountInput", "blur", event => {
+    const value = Number(event.target.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      event.target.value = DEFAULT_ADD_GOLD;
+    }
+  });
+
+  bind("goSellTabBtn", "click", () => {
+    goToTradeSellTab();
+  });
+
+  bind("modalCancelBtn", "click", () => {
+    closeModal();
+  });
+
+  bind("modalConfirmBtn", "click", () => {
+    if (typeof state.modalConfirmHandler === "function") {
+      state.modalConfirmHandler();
+    } else {
+      closeModal();
+    }
+  });
+
+  bind("modalMask", "click", event => {
+    if (event.target.id === "modalMask") {
+      closeModal();
+    }
+  });
+
+  bind("closeItemDetailBtn", "click", () => {
+    closeItemDetail();
+  });
+
+  bind("itemDetailMask", "click", event => {
+    if (event.target.id === "itemDetailMask") {
+      closeItemDetail();
+    }
+  });
+
+  bind("listingEditorCloseBtn", "click", () => {
+    closeListingEditor();
+  });
+
+  bind("openTrendModalBtn", "click", () => {
+    openTrendModal();
+  });
+
+  bind("closeTrendModalBtn", "click", event => {
+    event.preventDefault();
+    event.stopPropagation();
+    closeTrendModal();
+  });
+
+  bind("trendModalMask", "click", event => {
+    if (event.target.id === "trendModalMask") {
+      closeTrendModal();
+    }
+  });
+
+  bind("listingEditorMask", "click", event => {
+    if (event.target.id === "listingEditorMask") {
+      closeListingEditor();
+    }
+  });
+
+  bind("listingQtyMinusBtn", "click", () => {
+    changeDraftQuantity(-1);
+  });
+
+  bind("listingQtyPlusBtn", "click", () => {
+    changeDraftQuantity(1);
+  });
+
+  bind("listingQtyRange", "input", event => {
+    setDraftQuantity(event.target.value);
+  });
+
+  bind("listingPriceMinusBtn", "click", () => {
+    decreaseDraftPrice();
+  });
+
+  bind("listingPricePlusBtn", "click", () => {
+    increaseDraftPrice();
+  });
+
+  bind("listingPriceInput", "blur", event => {
+    setDraftPrice(event.target.value);
+  });
+
+  bind("listingDetailToggleBtn", "click", () => {
+    toggleDraftDetail();
+  });
+
+  bind("listingConfirmBtn", "click", () => {
+    confirmListing();
+  });
+
+  bind("closeListingViewBtn", "click", () => {
+    closeListingView();
+  });
+
+  bind("listingViewMask", "click", event => {
+    if (event.target.id === "listingViewMask") {
+      closeListingView();
+    }
+  });
+}
+
+function renderListingPriceChart(info, targetId = "listingPriceChart") {
+  const chart = $(targetId);
+  if (!chart) return;
+
+  const bars = buildListingPriceBars(info);
+  chart.style.gridTemplateColumns = `repeat(${bars.length}, minmax(0, 1fr))`;
+
+  chart.innerHTML = bars.map(bar => `
+    <div class="listing-bar-item ${bar.isActive ? "active" : ""}">
+      <div class="listing-bar-top">${formatMoney(bar.upperBound)}</div>
+      <div class="listing-bar-wrap">
+        <div class="listing-bar-fill" style="height:${bar.height}%;"></div>
+      </div>
+      <div class="listing-bar-bottom">${formatMoney(bar.upperBound)}</div>
+    </div>
+  `).join("");
+}
+
+function performBuyItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  if (state.gold < item.buyPrice) {
+    showMessageModal("金币不足", `当前金币不足，无法购买「${item.name}」。`);
+    return;
+  }
+
+  state.gold -= item.buyPrice;
+  state.inventory[id] = (state.inventory[id] || 0) + 1;
+
+  addRecord("购买", item.name, item.buyPrice, 1, {
+    itemId: item.id,
+    category: item.category,
+    quality: item.quality,
+    side: "buy"
+  });
+  saveState();
+  renderAll();
+
+  showMessageModal(
+    "购买成功",
+    `你已成功购买「${item.name}」。\n已放入仓库。\n消耗金币：${formatMoney(item.buyPrice)}\n当前金币：${formatMoney(state.gold)}`
+  );
+}
+
+function performSellItem(id) {
+  const item = state.items.find(entry => entry.id === id);
+  if (!item) return;
+
+  const count = state.inventory[id] || 0;
+  if (count <= 0) {
+    showMessageModal("出售失败", `仓库中没有「${item.name}」，无法出售。`);
+    return;
+  }
+
+  state.inventory[id] -= 1;
+  if (state.inventory[id] <= 0) {
+    delete state.inventory[id];
+  }
+
+  state.gold += item.sellPrice;
+
+  addRecord("出售", item.name, item.sellPrice, 1, {
+    itemId: item.id,
+    category: item.category,
+    quality: item.quality,
+    side: "sell"
+  });
+  saveState();
+  renderAll();
+
+  showMessageModal(
+    "出售成功",
+    `你已成功出售「${item.name}」。\n获得金币：${formatMoney(item.sellPrice)}\n当前金币：${formatMoney(state.gold)}`
+  );
+}
+
+function renderRecordColumn(listId, records, emptyText) {
+  const wrap = $(listId);
+  if (!wrap) return;
+
+  if (!records.length) {
+    wrap.innerHTML = `<div class="empty-block">${emptyText}</div>`;
+    return;
+  }
+
+  wrap.innerHTML = records.map(record => {
+    const item = getRecordItem(record);
+    const metaText = item
+      ? `${item.category || "-"} / ${item.quality || "-"}`
+      : (record.category || record.quality
+        ? `${record.category || "-"} / ${record.quality || "-"}`
+        : "交易物品");
+    const actionText = record.side === "buy" ? "买入" : "卖出";
+
+    return `
+      <div class="record-card">
+        <div class="record-card-copy">
+          <div class="record-card-name">${escapeHtml(record.itemName)}</div>
+          <div class="record-card-meta">${escapeHtml(metaText)}</div>
+          <div class="record-card-stats">数量 ${record.count}</div>
+        </div>
+
+        <div class="record-card-image">交易物品</div>
+
+        <div class="record-card-side">
+          <div class="record-card-time">${formatDateTime(record.timeMs || record.time)}</div>
+          <div class="record-card-action">${actionText}</div>
+          <div class="record-card-price">${formatMoney(record.price)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRecordTable() {
+  const sortedRecords = state.records
+    .slice()
+    .sort((a, b) => (b.timeMs || 0) - (a.timeMs || 0));
+
+  const buyRecords = sortedRecords.filter(record => record.side === "buy");
+  const sellRecords = sortedRecords.filter(record => record.side === "sell");
+
+  renderRecordColumn("recordBuyList", buyRecords, "暂无购买记录");
+  renderRecordColumn("recordSellList", sellRecords, "暂无出售记录");
+}
+
+function switchTab(tab) {
+  state.currentTab = tab;
+
+  document.querySelectorAll(".market-tab").forEach(button => {
+    button.classList.toggle("active", button.dataset.tab === tab);
+  });
+
+  const buyPanel = $("buyPanel");
+  const sellPanel = $("sellPanel");
+  const recordPanel = $("recordPanel");
+  const marketLayout = $("marketLayout");
+  const tradeSidebar = $("tradeSidebar");
+  const showSidebar = tab === "buy";
+
+  if (buyPanel) buyPanel.classList.toggle("active", tab === "buy");
+  if (sellPanel) sellPanel.classList.toggle("active", tab === "sell");
+  if (recordPanel) recordPanel.classList.toggle("active", tab === "record");
+  if (marketLayout) marketLayout.classList.toggle("sidebar-hidden", !showSidebar);
+  if (tradeSidebar) tradeSidebar.classList.toggle("hidden", !showSidebar);
+}
+
+function renderAll() {
+  removeExpiredListings();
+  updateGoldText();
+  renderListingSlotLimitTip();
+  renderBuyGrid();
+  renderListingShelf();
+  renderSellGrid();
+  renderWarehouseGrid();
+  renderRecordTable();
+  renderDepartmentView();
+
+  if (state.listingDraft) {
+    renderListingEditor();
+  }
+
+  renderListingDetailView();
+}
+
+function renderListingDetailView(listingId = state.activeListingDetailId) {
+  const mask = $("listingViewMask");
+  if (!mask || !listingId) return;
+
+  const listing = state.listings.find(entry => entry.listingId === listingId);
+  if (!listing) {
+    closeListingView();
+    return;
+  }
+
+  const item = getListingItem(listing);
+  const info = calculateListingInfo(item, listing.perItemPrice, listing.quantity);
+
+  $("listingViewName").textContent = listing.name || "-";
+  $("listingViewCategory").textContent = `${item.category || listing.category || "-"} / ${item.quality || listing.quality || "-"}`;
+  $("listingViewLowestPriceText").textContent = formatMoney(info.referencePrice);
+  $("listingViewCreatedAt").textContent = formatDateTime(listing.createdAtTs || listing.createdAt);
+  $("listingViewRemainText").textContent = formatCountdown(getListingRemainingMs(listing));
+  $("listingViewQuantityText").textContent = `${listing.quantity || 1}`;
+  $("listingViewPerPrice").textContent = formatMoney(listing.perItemPrice);
+  $("listingViewSaleTotal").textContent = formatMoney(listing.totalPrice);
+  $("listingViewFeeText").textContent = formatMoney(listing.fee);
+  $("listingViewDepositText").textContent = formatMoney(listing.deposit);
+  $("listingViewExpectedText").textContent = formatMoney(listing.expectedReceive);
+
+  renderListingPriceChart(info, "listingViewPriceChart");
+}
+
+function showListingDetail(listingId) {
+  const listing = state.listings.find(entry => entry.listingId === listingId);
+  if (!listing) return;
+
+  state.activeListingDetailId = listingId;
+  const mask = $("listingViewMask");
+  if (mask) {
+    mask.classList.add("show");
+  }
+
+  renderListingDetailView(listingId);
+}
+
+function closeListingView() {
+  const mask = $("listingViewMask");
+  if (mask) {
+    mask.classList.remove("show");
+  }
+
+  state.activeListingDetailId = "";
+}
+
+function unlistItem(listingId) {
+  const listing = state.listings.find(entry => entry.listingId === listingId);
+  if (!listing) return;
+
+  showConfirmModal(
+    "确认下架",
+    `确定要下架「${listing.name}」吗？\n下架后物品会退回仓库，但本次挂单保证金不返还。`,
+    () => {
+      closeModal();
+
+      state.inventory[listing.itemId] = (state.inventory[listing.itemId] || 0) + Math.max(1, toNumber(listing.quantity) || 1);
+      state.listings = state.listings.filter(entry => entry.listingId !== listingId);
+
+      if (state.activeListingDetailId === listingId) {
+        closeListingView();
+      }
+
+      addRecord("下架", listing.name, listing.perItemPrice, listing.quantity, {
+        itemId: listing.itemId,
+        category: listing.category,
+        quality: listing.quality,
+        side: "system"
+      });
+      saveState();
+      renderAll();
+
+      showMessageModal(
+        "下架成功",
+        `「${listing.name}」已下架并退回仓库。\n退回数量：${listing.quantity}\n保证金未返还。`
+      );
+    }
+  );
+}
+
+function confirmListing() {
+  const info = getDraftInfo();
+  if (!info) return;
+
+  const item = info.item;
+  const stockCount = state.inventory[item.id] || 0;
+
+  if (stockCount < info.quantity) {
+    showMessageModal("库存不足", `仓库库存不足，无法上架「${item.name}」。`);
+    return;
+  }
+
+  if (info.quantity > info.availableSlots) {
+    showMessageModal("槽位不足", `当前可用槽位：${info.availableSlots}`);
+    return;
+  }
+
+  if (state.gold < info.deposit) {
+    showMessageModal(
+      "金币不足",
+      `上架「${item.name}」需要先支付保证金 ${formatMoney(info.deposit)}，当前金币不足。`
+    );
+    return;
+  }
+
+  state.gold -= info.deposit;
+  state.inventory[item.id] -= info.quantity;
+  if (state.inventory[item.id] <= 0) {
+    delete state.inventory[item.id];
+  }
+
+  const createdAtTs = Date.now();
+  const createdAt = formatDateTime(createdAtTs);
+  const expireAtTs = createdAtTs + LISTING_DURATION_MS;
+
+  const listings = Array.from({ length: info.quantity }, () => ({
+    listingId: makeListingId(),
+    itemId: item.id,
+    name: item.name,
+    category: item.category,
+    quality: item.quality,
+    quantity: 1,
+    perItemPrice: info.perItemPrice,
+    perItemDeposit: info.perItemDeposit,
+    perItemFee: info.perItemFee,
+    perItemExpectedReceive: info.perItemExpectedReceive,
+    feeIndex: info.feeIndex,
+    feeRate: info.feeRate,
+    totalPrice: info.perItemPrice,
+    deposit: info.perItemDeposit,
+    fee: info.perItemFee,
+    expectedReceive: info.perItemExpectedReceive,
+    createdAtTs,
+    expireAtTs,
+    createdAt
+  }));
+
+  state.listings.push(...listings);
+
+  addRecord("上架", item.name, info.currentPrice, info.quantity, {
+    itemId: item.id,
+    category: item.category,
+    quality: item.quality,
+    side: "system"
+  });
+  saveState();
+  closeListingEditor();
+  renderAll();
+
+  showMessageModal(
+    "上架成功",
+    `你已成功上架「${item.name}」。\n上架数量：${info.quantity}\n单件价格：${formatMoney(info.currentPrice)}\n本次支付保证金：${formatMoney(info.deposit)}\n当前售位：${getUsedListingSlots()}/${getListingSlotLimit()}`
+  );
+}
+
+function renderListingShelf() {
+  const wrap = $("listingShelfGrid");
+  const countText = $("listingSlotCountText");
+  if (!wrap || !countText) return;
+
+  const slotLimit = getListingSlotLimit();
+  const usedSlots = getUsedListingSlots();
+  const availableSlots = Math.max(0, slotLimit - usedSlots);
+  countText.textContent = `${usedSlots}/${slotLimit}`;
+
+  const cards = state.listings.map(listing => `
+    <div class="listing-slot filled">
+      <div class="listing-slot-head">
+        <span class="listing-slot-name">${escapeHtml(listing.name)}</span>
+        <span class="quality-badge q-${listing.quality || "白"}">${listing.quality || "-"}</span>
+      </div>
+
+      <div class="listing-slot-body">
+        <div class="listing-slot-row">
+          <span>数量</span>
+          <span>${listing.quantity}</span>
+        </div>
+        <div class="listing-slot-row">
+          <span>单价</span>
+          <span>${formatMoney(listing.perItemPrice)}</span>
+        </div>
+        <div class="listing-slot-row">
+          <span>收入</span>
+          <span>${formatMoney(listing.expectedReceive)}</span>
+        </div>
+        <div class="listing-slot-row timer">
+          <span>剩余</span>
+          <span class="listing-slot-timer">${formatCountdown(getListingRemainingMs(listing))}</span>
+        </div>
+      </div>
+
+      <div class="listing-slot-actions">
+        <button class="card-btn info" onclick="showListingDetail('${listing.listingId}')">查看</button>
+        <button class="card-btn sell" onclick="unlistItem('${listing.listingId}')">下架</button>
+      </div>
+    </div>
+  `);
+
+  if (availableSlots > 0) {
+    cards.push(
+      ...Array.from({ length: availableSlots }, () => `
+        <div class="listing-slot empty">
+          <div class="listing-slot-empty-text">待上架</div>
+        </div>
+      `)
+    );
+  } else {
+    cards.push(`
+      <div class="listing-slot slot-upgrade">
+        <div class="listing-slot-upgrade-title">增加槽位</div>
+        <div class="listing-slot-upgrade-price">每个 ${formatMoney(LISTING_SLOT_PRICE)} 金币</div>
+        <button class="card-btn info slot-upgrade-btn" onclick="buyListingSlot()">购买 1 个新槽位</button>
+      </div>
+    `);
+  }
+
+  wrap.innerHTML = cards.join("");
+}
+
+function init() {
+  bindEvents();
+  startListingTicker();
+  updateGoldText();
+  loadStaticData();
+  switchView("trade");
+  switchTab("buy");
+
+  const goldInput = $("goldAmountInput");
+  if (goldInput && !goldInput.value) {
+    goldInput.value = DEFAULT_ADD_GOLD;
+  }
+}
+
+// 鍚姩
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
+
+
+/* =========================================================
+ * 涓夊崄涓夈€佹寕鍒?window
+ * 杩欐牱 HTML 閲岀殑 onclick 鎵嶈兘鐩存帴璋冪敤
+ * ========================================================= */
+window.buyItem = buyItem;
+window.sellItem = sellItem;
+window.openListingEditor = openListingEditor;
+window.showListingDetail = showListingDetail;
+window.unlistItem = unlistItem;
+window.goToTradeSellTab = goToTradeSellTab;
+window.goToWarehouseView = goToWarehouseView;
+window.openTrendModal = openTrendModal;
+window.closeTrendModal = closeTrendModal;
+// 鍏煎浣犱箣鍓嶆棫浠ｇ爜閲屽彲鑳借繕鍦ㄧ敤鐨勫悕瀛?
+window.openListingInfo = openListingEditor;
+window.openItemDetail = openItemDetail;
+window.closeItemDetail = closeItemDetail;
+window.handleItemDetailCardClick = handleItemDetailCardClick;
+window.handleListingEditorCardClick = handleListingEditorCardClick;
+window.buyListingSlot = buyListingSlot;
+window.closeDepartmentTaskDetail = closeDepartmentTaskDetail;
+
+

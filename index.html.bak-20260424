@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>交易行系统</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="page-bg"></div>
+
+  <div class="app">
+    <header class="top-nav">
+      <div class="top-nav-left">
+        <div class="nav-item disabled">开始游戏</div>
+        <div class="nav-item" data-view="warehouse">仓库</div>
+        <div class="nav-item active" data-view="trade">交易行</div>
+        <div class="nav-item" data-view="department">部门任务</div>
+      </div>
+
+      <div class="top-nav-right">
+        <span class="top-gold-label">当前金币</span>
+        <span class="top-gold-value" id="topGoldText">0</span>
+
+        <input
+          id="goldAmountInput"
+          class="gold-amount-input"
+          type="number"
+          min="1"
+          step="1000"
+          value="10000000"
+        />
+
+        <button id="addGoldBtn" class="gold-plus-btn" title="增加金币">+</button>
+      </div>
+    </header>
+
+    <section class="main-view trade-view active" id="tradeView">
+      <div class="market-tabs">
+        <button class="market-tab active" data-tab="buy">购买</button>
+        <button class="market-tab" data-tab="sell">出售</button>
+        <button class="market-tab" data-tab="record">交易记录</button>
+      </div>
+
+      <main class="market-layout" id="marketLayout">
+        <aside class="sidebar" id="tradeSidebar">
+          <div class="search-box">
+            <input id="searchInput" type="text" placeholder="请输入想要查找的商品" />
+          </div>
+
+          <div class="filter-block">
+            <div class="filter-title">物品分类</div>
+            <div class="filter-list" id="categoryList"></div>
+          </div>
+
+          <div class="filter-block">
+            <div class="filter-title">品质筛选</div>
+            <div class="filter-list" id="qualityList"></div>
+          </div>
+        </aside>
+
+        <section class="content">
+          <div class="panel active" id="buyPanel">
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <span class="toolbar-label">购买列表</span>
+                <button id="reloadStaticBtn" class="ghost-btn">重新读取静态数据</button>
+              </div>
+              <div class="toolbar-right">
+                <span class="tips-text" id="dataStatusText">静态数据未加载</span>
+              </div>
+            </div>
+
+            <div class="item-grid" id="buyGrid"></div>
+          </div>
+
+          <div class="panel" id="sellPanel">
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <span class="toolbar-label">出售列表</span>
+              </div>
+              <div class="toolbar-right">
+                <span class="tips-text" id="listingSlotLimitTip">最多同时上架 10 个商品</span>
+              </div>
+            </div>
+
+            <div class="listing-layout">
+              <section class="listing-shelf-panel">
+                <div class="listing-shelf-header">
+                  <div class="listing-shelf-title">上架架子</div>
+                  <div class="listing-shelf-count">
+                    上架数量 <span id="listingSlotCountText">0/10</span>
+                  </div>
+                </div>
+
+                <div class="listing-shelf-grid" id="listingShelfGrid"></div>
+              </section>
+
+              <section class="listing-select-panel">
+                <div class="listing-select-title">请选择要上架的道具</div>
+                <div class="item-grid compact-grid listing-select-grid" id="sellSelectGrid"></div>
+              </section>
+            </div>
+          </div>
+
+          <div class="panel" id="recordPanel">
+            <div class="toolbar">
+              <div class="toolbar-left">
+                <span class="toolbar-label">交易记录</span>
+              </div>
+              <div class="toolbar-right">
+                <button id="clearRecordBtn" class="danger-btn">清空记录</button>
+              </div>
+            </div>
+
+            <div class="record-layout">
+              <section class="record-column">
+                <div class="record-column-head">
+                  <span class="record-column-title">购买记录</span>
+                </div>
+                <div class="record-list" id="recordBuyList"></div>
+              </section>
+
+              <section class="record-column">
+                <div class="record-column-head">
+                  <span class="record-column-title">出售记录</span>
+                </div>
+                <div class="record-list" id="recordSellList"></div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
+    </section>
+
+    <section class="main-view warehouse-view" id="warehouseView">
+      <div class="warehouse-toolbar">
+        <div class="warehouse-title-wrap">
+          <div class="warehouse-title">仓库</div>
+          <div class="warehouse-subtitle" id="warehouseSummaryText">当前仓库为空</div>
+        </div>
+
+        <div class="warehouse-toolbar-right">
+          <button id="goSellTabBtn" class="ghost-btn">前往交易行出售页</button>
+        </div>
+      </div>
+
+      <div class="warehouse-grid compact-grid" id="warehouseGrid"></div>
+    </section>
+
+    <section class="main-view department-view" id="departmentView">
+      <div class="department-toolbar">
+        <div class="department-title-wrap">
+          <div class="department-title">部门任务</div>
+          <div class="department-subtitle">按部门查看任务链路、前置关系和奖励预览</div>
+        </div>
+
+        <div class="department-toolbar-right">
+          <span class="tips-text" id="departmentSummaryText">暂无部门任务数据</span>
+        </div>
+      </div>
+
+      <div class="department-layout">
+        <aside class="department-sidebar">
+          <div class="department-sidebar-title">部门列表</div>
+          <div class="department-tab-list" id="departmentTabList"></div>
+        </aside>
+
+        <section class="department-content-panel">
+          <div class="department-main-layout">
+            <div class="department-graph-panel">
+              <div class="department-graph-header">
+                <div>
+                  <div class="department-graph-title" id="departmentGraphTitle">-</div>
+                  <div class="department-graph-subtitle" id="departmentGraphSubtitle">任务流程图</div>
+                </div>
+
+                <div class="department-graph-legend">
+                  <span>任务链按前置关系自上而下展开</span>
+                  <span>点击节点后右侧同步显示任务详情</span>
+                </div>
+              </div>
+
+              <div class="department-task-flow-wrap" id="departmentTaskFlowWrap">
+                <svg class="department-task-flow-lines" id="departmentTaskFlowLines"></svg>
+                <div class="department-task-flow" id="departmentTaskFlow"></div>
+              </div>
+            </div>
+
+            <aside class="department-detail-side">
+              <div class="department-detail-tip">点击左侧任务节点即可在这里查看详情</div>
+
+              <div class="department-task-detail-panel">
+                <div class="department-task-detail-top">
+                  <div class="department-task-detail-title">任务详情</div>
+                </div>
+
+                <div class="department-task-detail-grid">
+                  <div class="department-task-detail-block">
+                    <div class="department-task-detail-label">任务名称</div>
+                    <div class="department-task-detail-value strong" id="departmentTaskDetailName">-</div>
+                  </div>
+
+                  <div class="department-task-detail-block two-col">
+                    <div>
+                      <div class="department-task-detail-label">所属部门</div>
+                      <div class="department-task-detail-value" id="departmentTaskDetailDepartment">-</div>
+                    </div>
+                    <div>
+                      <div class="department-task-detail-label">任务类型</div>
+                      <div class="department-task-detail-value" id="departmentTaskDetailType">-</div>
+                    </div>
+                  </div>
+
+                  <div class="department-task-detail-block two-col">
+                    <div>
+                      <div class="department-task-detail-label">任务地图</div>
+                      <div class="department-task-detail-value" id="departmentTaskDetailMap">-</div>
+                    </div>
+                    <div>
+                      <div class="department-task-detail-label">前置任务</div>
+                      <div class="department-task-detail-value" id="departmentTaskDetailPreTask">-</div>
+                    </div>
+                  </div>
+
+                  <div class="department-task-detail-block">
+                    <div class="department-task-detail-label">任务目标</div>
+                    <div class="department-task-detail-value" id="departmentTaskDetailTarget">-</div>
+                  </div>
+
+                  <div class="department-task-detail-block">
+                    <div class="department-task-detail-label">任务描述</div>
+                    <div class="department-task-detail-value" id="departmentTaskDetailDescription">-</div>
+                  </div>
+
+                  <div class="department-task-detail-block">
+                    <div class="department-task-detail-label">任务奖励</div>
+                    <div class="department-task-detail-reward-grid" id="departmentTaskDetailRewards"></div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-mask" id="modalMask">
+    <div class="modal-box">
+      <div class="modal-title" id="modalTitle">提示</div>
+      <div class="modal-content" id="modalContent"></div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" id="modalCancelBtn">取消</button>
+        <button class="modal-btn modal-btn-confirm" id="modalConfirmBtn">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="listing-editor-mask" id="listingEditorMask">
+    <div class="listing-editor-panel">
+      <div class="listing-editor-top">
+        <div class="listing-editor-title">上架物品</div>
+        <button class="listing-editor-close-btn" id="listingEditorCloseBtn">×</button>
+      </div>
+
+      <div class="listing-editor-layout">
+        <section class="listing-editor-chart-panel">
+          <div class="listing-lowest-row">
+            <span class="listing-refresh-icon">↻</span>
+            <span>在售最低价</span>
+            <span class="listing-lowest-price" id="listingLowestPriceText">0</span>
+          </div>
+
+          <button id="openTrendModalBtn" class="trend-open-btn">收益变化曲线</button>
+
+          <div class="listing-chart-legend">
+            <span class="legend-item"><i class="legend-dot legend-dot-active"></i>你的挂单</span>
+            <span class="legend-item"><i class="legend-dot"></i>挂单数</span>
+          </div>
+
+          <div class="listing-price-chart" id="listingPriceChart"></div>
+        </section>
+
+        <section class="listing-editor-side">
+          <div class="listing-item-card">
+            <div class="listing-item-name" id="listingEditorName">-</div>
+            <div class="listing-item-category" id="listingEditorCategory">-</div>
+            <div class="listing-item-image">物品图片</div>
+          </div>
+
+          <div class="listing-editor-form">
+            <div class="listing-info-row">
+              <span>出售数量：<strong id="listingQtyText">1/1</strong></span>
+              <span>使用售位：<strong id="listingSlotUseText">0/10</strong></span>
+            </div>
+
+            <div class="listing-stepper-row">
+              <button class="listing-step-btn" id="listingQtyMinusBtn">−</button>
+              <input
+                type="range"
+                min="1"
+                max="1"
+                value="1"
+                id="listingQtyRange"
+                class="listing-range"
+              />
+              <button class="listing-step-btn" id="listingQtyPlusBtn">+</button>
+            </div>
+
+            <div class="listing-reference-row">
+              <span>参考价格：</span>
+              <span class="listing-reference-price" id="listingReferencePriceText">0</span>
+            </div>
+
+            <div class="listing-stepper-row">
+              <button class="listing-step-btn" id="listingPriceMinusBtn">−</button>
+              <input
+                type="number"
+                id="listingPriceInput"
+                class="listing-price-input"
+                value="0"
+              />
+              <button class="listing-step-btn" id="listingPricePlusBtn">+</button>
+            </div>
+
+            <div class="listing-price-warning" id="listingPriceWarning"></div>
+
+            <div class="listing-expected-row">
+              <span>预计收入：</span>
+              <span class="listing-expected-value" id="listingExpectedText">0</span>
+              <button class="listing-detail-btn" id="listingDetailToggleBtn">?</button>
+            </div>
+
+            <div class="listing-detail-box" id="listingDetailBox">
+              <div class="listing-detail-row">
+                <span>出售总价</span>
+                <span id="detailSaleTotalText">0</span>
+              </div>
+              <div class="listing-detail-row">
+                <span>手续费</span>
+                <span id="detailFeeText">0</span>
+              </div>
+              <div class="listing-detail-row">
+                <span>手续费横轴</span>
+                <span id="detailFeeAxisText">0</span>
+              </div>
+              <div class="listing-detail-row">
+                <span>手续费序号</span>
+                <span id="detailFeeIndexText">0</span>
+              </div>
+              <div class="listing-detail-row">
+                <span>保证金（在上架时收取）</span>
+                <span id="detailDepositText">0</span>
+              </div>
+              <div class="listing-detail-row">
+                <span>手续费率</span>
+                <span id="detailFeeRateText">0%</span>
+              </div>
+              <div class="listing-detail-row strong">
+                <span>预计总收益</span>
+                <span id="detailExpectedText">0</span>
+              </div>
+            </div>
+
+            <button class="listing-confirm-btn" id="listingConfirmBtn">上架</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div class="listing-view-mask" id="listingViewMask">
+    <div class="listing-view-panel">
+      <div class="listing-view-top">
+        <div class="listing-view-title">查看物品</div>
+        <button id="closeListingViewBtn" class="listing-view-close-btn">×</button>
+      </div>
+
+      <div class="listing-view-layout">
+        <section class="listing-view-chart-panel">
+          <div class="listing-lowest-row">
+            <span class="listing-refresh-icon">↻</span>
+            <span>在售最低价</span>
+            <span class="listing-lowest-price" id="listingViewLowestPriceText">0</span>
+          </div>
+
+          <div class="listing-chart-legend">
+            <span class="legend-item"><i class="legend-dot legend-dot-active"></i>你的挂单</span>
+            <span class="legend-item"><i class="legend-dot"></i>挂单数</span>
+          </div>
+
+          <div class="listing-price-chart listing-view-price-chart" id="listingViewPriceChart"></div>
+        </section>
+
+        <aside class="listing-view-side">
+          <div class="listing-item-card">
+            <div class="listing-item-name" id="listingViewName">-</div>
+            <div class="listing-item-category" id="listingViewCategory">-</div>
+            <div class="listing-item-image">物品图片</div>
+          </div>
+
+          <div class="listing-view-summary">
+            <div class="listing-view-row">
+              <span>上架时间</span>
+              <span id="listingViewCreatedAt">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>剩余时间</span>
+              <span id="listingViewRemainText">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>出售数量</span>
+              <span id="listingViewQuantityText">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>单件价格</span>
+              <span id="listingViewPerPrice">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>出售总价</span>
+              <span id="listingViewSaleTotal">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>手续费</span>
+              <span id="listingViewFeeText">-</span>
+            </div>
+            <div class="listing-view-row">
+              <span>保证金（上架时收取）</span>
+              <span id="listingViewDepositText">-</span>
+            </div>
+            <div class="listing-view-row strong">
+              <span>预计总收益</span>
+              <span id="listingViewExpectedText">-</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script src="./data/items-data.js"></script>
+  <script src="./app.js"></script>
+
+  <div class="trend-modal-mask" id="trendModalMask">
+    <div class="trend-modal-panel">
+      <div class="trend-modal-top">
+        <div class="trend-modal-title">价格变化曲线</div>
+        <button id="closeTrendModalBtn" class="trend-modal-close-btn" onclick="closeTrendModal(); return false;">×</button>
+      </div>
+
+      <div class="trend-modal-subtitle" id="trendModalItemTitle">-</div>
+
+      <div class="trend-chart-legend">
+        <span class="legend-item"><i class="legend-dot legend-income"></i>预期收入</span>
+        <span class="legend-item"><i class="legend-dot legend-fee"></i>手续费</span>
+        <span class="legend-item"><i class="legend-dot legend-deposit"></i>保证金</span>
+      </div>
+
+      <div class="trend-chart-wrap">
+        <canvas id="trendChartCanvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="item-detail-mask" id="itemDetailMask">
+    <div class="item-detail-panel">
+      <div class="item-detail-top">
+        <div class="item-detail-title">物品详情</div>
+        <button id="closeItemDetailBtn" class="item-detail-close-btn" onclick="closeItemDetail(); return false;">×</button>
+      </div>
+
+      <div class="item-detail-name" id="itemDetailName">-</div>
+      <div class="item-detail-grid">
+        <div class="item-detail-row"><span>分类</span><span id="itemDetailCategory">-</span></div>
+        <div class="item-detail-row"><span>品质</span><span id="itemDetailQuality">-</span></div>
+        <div class="item-detail-row"><span>长</span><span id="itemDetailLength">-</span></div>
+        <div class="item-detail-row"><span>宽</span><span id="itemDetailWidth">-</span></div>
+        <div class="item-detail-row"><span>价格</span><span id="itemDetailPrice">-</span></div>
+        <div class="item-detail-row"><span>最低保证金</span><span id="itemDetailMinDeposit">-</span></div>
+        <div class="item-detail-row"><span>售价下限</span><span id="itemDetailPriceLower">-</span></div>
+        <div class="item-detail-row"><span>售价上限</span><span id="itemDetailPriceUpper">-</span></div>
+      </div>
+
+      <div class="item-detail-desc-title">道具描述</div>
+      <div class="item-detail-desc" id="itemDetailDescription">-</div>
+    </div>
+  </div>
+</body>
+</html>
