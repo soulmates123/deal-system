@@ -1097,6 +1097,28 @@ function updateDataStatus(text) {
   }
 }
 
+function addCustomGold() {
+  const input = $("goldAmountInput");
+  if (!input) return;
+
+  const amount = Math.floor(Number(input.value));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    input.value = DEFAULT_ADD_GOLD;
+    showMessageModal("输入无效", "请输入大于 0 的金币数量。");
+    return;
+  }
+
+  state.gold += amount;
+  saveState();
+  renderAll();
+
+  input.value = String(amount);
+  showMessageModal(
+    "增加成功",
+    `已增加金币：${formatMoney(amount)}\n当前金币：${formatMoney(state.gold)}`
+  );
+}
+
 
 /* =========================================================
  * 十、交易记录
@@ -1586,6 +1608,48 @@ function getDraftInfo() {
   );
 }
 
+function getListingBlockedState(info) {
+  if (!info || !info.item) {
+    return {
+      title: "无法上架",
+      message: "当前没有可上架的物品信息。"
+    };
+  }
+
+  const item = info.item;
+  const stockCount = state.inventory[item.id] || 0;
+
+  if (stockCount <= 0 || info.stockCount <= 0 || info.quantity <= 0) {
+    return {
+      title: "库存不足",
+      message: `仓库库存不足，无法上架「${item.name}」。`
+    };
+  }
+
+  if (stockCount < info.quantity) {
+    return {
+      title: "库存不足",
+      message: `仓库库存不足，无法上架「${item.name}」。`
+    };
+  }
+
+  if (info.quantity > info.availableSlots) {
+    return {
+      title: "槽位不足",
+      message: `当前可用槽位：${info.availableSlots}`
+    };
+  }
+
+  if (state.gold < info.deposit) {
+    return {
+      title: "金币不足",
+      message: `上架「${item.name}」需要先支付保证金 ${formatMoney(info.deposit)}，当前金币不足。`
+    };
+  }
+
+  return null;
+}
+
 /**
  * 数量 - / +
  */
@@ -1986,15 +2050,13 @@ function renderListingEditor() {
     }
   }
 
-  // 上架按钮是否可点
-  if (confirmBtnEl) {
-    const canList =
-      info.stockCount > 0 &&
-      info.quantity > 0 &&
-      state.gold >= info.deposit; // 上架时需要支付的是总保证金
+  const blockedState = getListingBlockedState(info);
 
-    confirmBtnEl.disabled = !canList;
-    confirmBtnEl.textContent = canList ? "上架" : "无法上架";
+  // 上架按钮始终可点击，点击后再提示具体原因
+  if (confirmBtnEl) {
+    confirmBtnEl.disabled = false;
+    confirmBtnEl.textContent = "上架";
+    confirmBtnEl.title = blockedState ? blockedState.message : "";
   }
 
   renderListingPriceChart(info);
@@ -3244,23 +3306,9 @@ function confirmListing() {
   if (!info) return;
 
   const item = info.item;
-  const stockCount = state.inventory[item.id] || 0;
-
-  if (stockCount < info.quantity) {
-    showMessageModal("库存不足", `仓库库存不足，无法上架「${item.name}」。`);
-    return;
-  }
-
-  if (info.quantity > info.availableSlots) {
-    showMessageModal("槽位不足", `当前可用槽位：${info.availableSlots}`);
-    return;
-  }
-
-  if (state.gold < info.deposit) {
-    showMessageModal(
-      "金币不足",
-      `上架「${item.name}」需要先支付保证金 ${formatMoney(info.deposit)}，当前金币不足。`
-    );
+  const blockedState = getListingBlockedState(info);
+  if (blockedState) {
+    showMessageModal(blockedState.title, blockedState.message);
     return;
   }
 
